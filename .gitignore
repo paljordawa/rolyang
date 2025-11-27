@@ -1,0 +1,12 @@
+node_modules
+.DS_Store
+dist
+.env
+.env.*
+coverage
+*.log
+pnpm-debug.log*
+npm-debug.log*
+package-lock.json
+*.local
+

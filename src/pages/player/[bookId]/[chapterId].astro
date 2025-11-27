@@ -1,0 +1,42 @@
+---
+import { ViewTransitions } from 'astro:transitions';
+import Layout from '../../../layouts/Layout.astro';
+import books from '../../../data/books.json';
+
+export async function getStaticPaths() {
+  return books.flatMap((b) =>
+    b.chapters.map((_, i) => ({ params: { bookId: b.id, chapterId: String(i) } }))
+  );
+}
+
+const { bookId, chapterId } = Astro.params;
+const book = books.find(b => b.id === bookId);
+const chapter = book?.chapters?.[Number(chapterId)];
+
+// Coerce / normalize props passed into the client `Player` component to avoid
+// strict prop type mismatches during build-time type checking.
+// Player is provided as a persistent React island in the site layout (bottom of the page)
+---
+<Layout hideNav backHref={book ? `/book/${book.id}` : '/library'} playerStart={{ startBookId: book?.id ?? undefined, startChapIndex: Number(chapterId) }}>
+  <section class="max-w-md mx-auto  text-center" >
+    {book && chapter ? (
+        <div class="p-6 bg-white/5 rounded-3xl text-left">
+          <div class="flex items-center gap-4">
+            <img src={book.cover} alt={book.title} class="w-28 h-28 rounded-lg object-cover shadow-md" />
+            <div>
+              <div class="text-lg font-semibold">{book.title}</div>
+              <div class="text-sm text-white/70">{book.author}</div>
+              <div class="mt-2 text-sm text-white/80">{chapter.title}</div>
+            </div>
+          </div>
+          <p class="mt-4 text-sm text-white/70">The audio player controls are available in the persistent player at the bottom of the screen — use those to play/pause and change chapters while navigating the site.</p>
+        </div>
+      
+    ) : (
+      <div class="text-center text-white/80 py-20">
+        <h2 class="text-2xl font-bold mb-2">Chapter not found</h2>
+        <p>Please check the URL or go back to the book page.</p>
+      </div>
+    )}
+  </section>
+</Layout>

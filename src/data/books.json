@@ -1,0 +1,134 @@
+[
+  {
+    "id": "book-1",
+    "title": "The Mountain Path",
+    "author": "Kygo",
+    "cover": "/thumbnail/mn.jpg",
+    "description": "An inspiring journey through the highlands, exploring the beauty and challenges of mountain life.",
+    "chapters": [
+      {
+        "id": "b1c1",
+        "title": "Stay(feat. Maty Noyes)",
+        "audio": "/audio/stay.mp3",
+        "duration": "4:12"
+      },
+      {
+        "id": "b2c1",
+        "title": "Cut Your Teeth (Kyla La Grange)",
+        "audio": "/audio/Cut Your Teeth Kygo Remix.mp3",
+        "duration": "5:00"
+      },
+      {
+        "id": "b1c2",
+        "title": "Raging (feat. Kodaline)",
+        "audio": "/audio/raging.mp3",
+        "duration": "6:07"
+      },
+      {
+        "id": "b1c2",
+        "title": "Oasis (feat. Foxes)",
+        "audio": "/audio/oasis.mp3",
+        "duration": "6:07"
+      }
+    
+    ]
+  },
+  {
+    "id": "book-2",
+    "title": "Mixed Genre",
+    "author": "Various Artist",
+    "cover": "/thumbnail/file.jpg",
+    "description": "An inspiring journey through the highlands, exploring the beauty and challenges of mountain life.",
+
+    "chapters": [
+      {
+        "id": "b2c1",
+        "title": "Hear Me Now (feat. Zeeba)",
+        "audio": "/audio/hearMeNow.m4a",
+        "duration": "5:00"
+      },
+      {
+        "id": "b2c1",
+        "title": "Another Night (Mike William ft Matluck)",
+        "audio": "/audio/Another Night ( Original Mix).mp3",
+        "duration": "5:00"
+      },
+      {
+        "id": "b2c1",
+        "title": "Runaway (Sam Feldt)",
+        "audio": "/audio/Runaway (Original Mix).mp3",
+        "duration": "5:00"
+      },
+      {
+        "id": "b2c1",
+        "title": "Broken (Bjonr ft. Tom Beiley)",
+        "audio": "/audio/broken.mp3",
+        "duration": "5:00"
+      },
+      {
+        "id": "b2c1",
+        "title": "beleive (Mida)",
+        "audio": "/audio/beleive.mp3",
+        "duration": "5:00"
+      },
+      {
+        "id": "b2c1",
+        "title": "Stand By Me (VINAI & Streex ft.Micky Blue)",
+        "audio": "/audio/Stand By Me ft.Micky Blue(Original Mix).mp3",
+        "duration": "5:00"
+      },
+      {
+        "id": "b2c1",
+        "title": "Something New (Axwell & Ingrosso)",
+        "audio": "/audio/Something New.mp3",
+        "duration": "5:00"
+      }
+    ]
+  },
+  {
+    "id": "book-3",
+    "title": "Hexagon",
+    "author": "Don Diablo",
+    "cover": "/thumbnail/gamru.jpg",
+    "description": "An inspiring journey through the highlands, exploring the beauty and challenges of mountain life.",
+
+    "chapters": [
+      {
+        "id": "b2c1",
+        "title": "What We Started",
+        "audio": "/audio/don-diablo-What We Started.mp3",
+        "duration": "5:00"
+      },
+       {
+        "id": "b2c1",
+        "title": "Secret Stash(Mike Mago & Dragonette)",
+        "audio": "/audio/Secret Stash.mp3",
+        "duration": "5:00"
+      },
+       {
+        "id": "b2c1",
+        "title": "Children Of A Miracle (Don Diablo & Marnik)",
+        "audio": "/audio/Don Diablo-Children Of A Miracle.mp3",
+        "duration": "5:00"
+      },
+       {
+        "id": "b2c1",
+        "title": "Save A Little Love For Me",
+        "audio": "/audio/Don DiabloྀSave A Little Love.mp3",
+        "duration": "5:00"
+      },
+       {
+        "id": "b2c1",
+        "title": "Don't Let Go ft. Holly Wintery",
+        "audio": "/audio/Don Diablo - Don't Let Go ft. Holly Winter.mp3",
+        "duration": "5:00"
+      },
+       {
+        "id": "b2c1",
+        "title": "Pretty Young Money - King Arthur",
+        "audio": "/audio/King Arthur - Pretty Young Money.mp3",
+        "duration": "5:00"
+      }
+    ]
+  }
+]

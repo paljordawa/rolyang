@@ -1,0 +1,90 @@
+---
+import Layout from '../layouts/Layout.astro';
+import books from '../data/books.json';
+---
+<Layout hidePlayerUntilPlaying>
+  <header class="px-4 py-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm text-white/70">Music made for</div>
+        <h1 class="page-title text-2xl sm:text-3xl font-bold">Entertainment</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <img src={books[0]?.cover ?? '/cover-placeholder.png'} alt="avatar" class="w-10 h-10 rounded-full object-cover" />
+        <button aria-label="Search" class="p-2 rounded bg-white/5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="space-y-8 px-4 pb-8">
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold text-lg">Mood</h2>
+        <a href="/library" class="text-sm text-white/70">see all</a>
+      </div>
+      <div class="flex gap-4 overflow-x-auto pb-2 -ml-1">
+        {books.slice(0,6).map(book => (
+          <div class="w-36 flex-shrink-0 relative">
+            <a href={`/book/${book.id}`} class="block">
+              <div class="w-36 h-36 rounded-xl overflow-hidden shadow-md mb-2 relative">
+                <img src={book.cover} alt={book.title} class="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  data-player-book={book.id}
+                  data-player-chap={0}
+                  data-player-expand="true"
+                  class="absolute right-2 top-2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white js-player-btn"
+                  aria-label={`Play ${book.title}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                    <path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" />
+                  </svg>
+                </button>
+              </div>
+            </a>
+            <div class="text-sm font-medium truncate">{book.title}</div>
+            <div class="text-xs text-white/60 truncate">{book.author}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold text-lg">Pop</h2>
+        <a href="/library" class="text-sm text-white/70">see all</a>
+      </div>
+      <div class="flex gap-4 overflow-x-auto pb-2 -ml-1">
+        {books.slice(1,7).map(book => (
+          <a href={`/book/${book.id}`} class="w-36 flex-shrink-0">
+            <div class="w-36 h-36 rounded-xl overflow-hidden shadow-md mb-2">
+              <img src={book.cover} alt={book.title} class="w-full h-full object-cover" />
+            </div>
+            <div class="text-sm font-medium truncate">{book.title}</div>
+            <div class="text-xs text-white/60 truncate">{book.author}</div>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold text-lg">Jump back in</h2>
+        <a href="/library" class="text-sm text-white/70">see all</a>
+      </div>
+      <div class="flex gap-4 overflow-x-auto pb-2 -ml-1">
+        {books.map(book => (
+          <a href={`/book/${book.id}`} class="w-36 flex-shrink-0">
+            <div class="w-36 h-36 rounded-xl overflow-hidden shadow-md mb-2">
+              <img src={book.cover} alt={book.title} class="w-full h-full object-cover" />
+            </div>
+            <div class="text-sm font-medium truncate">{book.title}</div>
+            <div class="text-xs text-white/60 truncate">{book.author}</div>
+          </a>
+        ))}
+      </div>
+    </section>
+  </main>
+</Layout>
