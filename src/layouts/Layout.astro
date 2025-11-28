@@ -4,12 +4,31 @@ import Player from '../components/Player.jsx';
 import albums from '../data/data.json';
 import "../styles.css"
 const { hideNav, backHref, playerStart, hidePlayerUntilPlaying } = Astro.props;
+
+const siteTitle = 'Rolyang Music Player';
+const siteDescription = 'Listen to curated music from the Rolyang collection.';
+const siteOrigin = Astro.site ? Astro.site.origin : '';
+const canonicalUrl = siteOrigin ? new URL(Astro.url.pathname + Astro.url.search + Astro.url.hash, siteOrigin).toString() : Astro.url?.href || '';
+const ogImagePath = '/social.jpg';
+const ogImageUrl = siteOrigin ? new URL(ogImagePath, siteOrigin).toString() : ogImagePath;
 ---
 
 <html lang="en" class="antialiased">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content={siteDescription} />
+    <meta property="og:title" content={siteTitle} />
+    <meta property="og:description" content={siteDescription} />
+    <meta property="og:type" content="website" />
+    {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+    <meta property="og:site_name" content={siteTitle} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:alt" content="Cover artwork for Rolyang Audiobooks." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={siteTitle} />
+    <meta name="twitter:description" content={siteDescription} />
+    <meta name="twitter:image" content={ogImageUrl} />
     <link rel="stylesheet" href="/src/styles.css" />
     <ViewTransitions />
     <!-- client-only module for navigation and player helpers -->
