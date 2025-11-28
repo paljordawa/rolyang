@@ -70,7 +70,15 @@ const album = albums.find(b => b.id === id);
                 </div>
               </div>
               {/* <div class="text-xs text-white/60">{ch.duration}</div> */}
-              <button type="button" data-player-album={album.id} data-player-chap={i} data-player-expand="false" class="p-2 rounded-full bg-white/5 hover:bg-white/7 js-player-btn" aria-label={`Play ${ch.title}`}>
+              <button 
+                type="button" 
+                data-player-album={album.id} 
+                data-player-chap={i} 
+                data-player-expand="false" 
+                class="p-2 rounded-full bg-white/5 hover:bg-white/7 js-player-btn" 
+                aria-label={`Play ${ch.title}`}
+                onclick={`console.log("Button clicked, checking playerPlay:", typeof window.playerPlay); if(window.playerPlay){window.playerPlay({bookId:"${album.id}",chapIndex:${i},play:true,expand:false});}else{console.error("playerPlay not available, window keys:", Object.keys(window).filter(k => k.includes("player")));}`}
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-white">
                   <path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" />
                 </svg>

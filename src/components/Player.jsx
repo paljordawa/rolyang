@@ -146,9 +146,17 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     function onPlayerPlay(ev) {
       try {
         const detail = (ev && ev.detail) || {};
-        if (!detail.bookId) return;
+        console.log('Player received play event:', detail);
+        if (!detail.bookId) {
+          console.warn('Player play event missing bookId');
+          return;
+        }
         const idx = albums.findIndex((b) => b.id === detail.bookId);
-        if (idx < 0) return;
+        if (idx < 0) {
+          console.warn('Album not found:', detail.bookId);
+          return;
+        }
+        console.log('Setting album index:', idx);
         setAlbumIdx(idx);
         if (typeof detail.chapIndex === 'number') {
           const chapters = albums[idx]?.chapters || [];
@@ -156,15 +164,23 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
           if (Number.isFinite(rawIndex)) {
             const maxIdx = Math.max(0, (chapters.length || 1) - 1);
             const clamped = Math.min(Math.max(0, Math.trunc(rawIndex)), maxIdx);
+            console.log('Setting chapter index:', clamped);
             setChapIdx(clamped);
           }
         }
         setExpanded(detail.expand !== false);
         setIsPlaying(detail.play === false ? false : true);
-      } catch (e) {}
+        console.log('Player state updated - playing:', detail.play !== false);
+      } catch (e) {
+        console.error('Player play handler error:', e);
+      }
     }
+    console.log('Player: Setting up player:play listener');
     window.addEventListener('player:play', onPlayerPlay);
-    return () => window.removeEventListener('player:play', onPlayerPlay);
+    return () => {
+      console.log('Player: Removing player:play listener');
+      window.removeEventListener('player:play', onPlayerPlay);
+    };
   }, [albums]);
 
   useEffect(() => {

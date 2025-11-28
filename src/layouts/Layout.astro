@@ -13,14 +13,26 @@ const { hideNav, backHref, playerStart, hidePlayerUntilPlaying } = Astro.props;
     <link rel="stylesheet" href="/src/styles.css" />
     <ViewTransitions />
     <!-- client-only module for navigation and player helpers -->
+    <!-- Define playerPlay FIRST, before any other scripts -->
+    <script is:inline>
+      window.playerPlay = window.playerPlay || function (payload) {
+        try { 
+          console.log('playerPlay called with:', payload);
+          window.dispatchEvent(new CustomEvent('player:play', { detail: payload })); 
+        } catch (e) { 
+          console.error('playerPlay error:', e);
+        }
+      };
+      console.log('playerPlay defined in head, type:', typeof window.playerPlay);
+    </script>
     <script is:inline>
       {`// Client helpers for SPA-like navigation and global player control
 // - appNavigate(href): fetches page and swaps <main> content
 // - playerPlay(payload): dispatches player:play
 
-window.playerPlay = function (payload) {
-  try { window.dispatchEvent(new CustomEvent('player:play', { detail: payload })); } catch (e) { }
-};
+console.log('App client script loaded');
+
+(function() {
 
 async function appNavigate(href) {
   try {
@@ -55,6 +67,53 @@ async function appNavigate(href) {
   }
 }
 
+// delegation for player actions using data attributes - MUST be before link navigation
+function setupPlayerClickHandler() {
+  console.log('Setting up player click handler');
+  document.addEventListener('click', function(ev) {
+    try {
+      console.log('Click detected, target:', ev.target, 'tagName:', ev.target.tagName);
+      let el = ev.target;
+      // Check if clicked element or any parent has the data attribute
+      while (el && el !== document.body && el !== document) {
+        if (el.nodeType === 1 && el.hasAttribute) {
+          const hasAlbum = el.hasAttribute('data-player-album');
+          const hasBook = el.hasAttribute('data-player-book');
+          if (hasAlbum || hasBook) {
+            console.log('Found player button element:', el, 'hasAlbum:', hasAlbum, 'hasBook:', hasBook);
+            ev.preventDefault();
+            ev.stopPropagation();
+            const albumId = el.dataset.playerAlbum || el.dataset.playerBook;
+            const chapIndex = el.dataset.playerChap ? Number(el.dataset.playerChap) : 0;
+            const expand = el.dataset.playerExpand !== 'false';
+            const payload = { bookId: albumId, chapIndex, play: true, expand };
+            console.log('Player button clicked:', payload);
+            // Dispatch the event and let the React player handle playback. Do not attempt
+            // to force synchronous playback here — that logic was reverted per project
+            // preference to keep the player island handling play behavior.
+            if (window.playerPlay) {
+              window.playerPlay(payload);
+            } else {
+              console.error('window.playerPlay is not defined!');
+            }
+            return;
+          }
+        }
+        el = el.parentElement;
+      }
+    } catch (e) {
+      console.error('Player click handler error:', e);
+    }
+  }, true); // Use capture phase to run before other handlers
+}
+
+// Setup handlers when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupPlayerClickHandler);
+} else {
+  setupPlayerClickHandler();
+}
+
 // link delegation for internal navigation
 document.addEventListener('click', async (ev) => {
   if (ev.defaultPrevented) return;
@@ -75,22 +134,6 @@ window.addEventListener('popstate', (e) => {
   appNavigate(href);
 });
 
-// delegation for player actions using data attributes
-document.addEventListener('click', (ev) => {
-  const anyEv = ev;
-  const el = anyEv.target && anyEv.target.closest ? (anyEv.target.closest('[data-player-album]') || anyEv.target.closest('[data-player-book]')) : null;
-  if (!el) return;
-  ev.preventDefault();
-  const albumId = el.dataset.playerAlbum || el.dataset.playerBook;
-  const chapIndex = el.dataset.playerChap ? Number(el.dataset.playerChap) : 0;
-  const expand = el.dataset.playerExpand !== 'false';
-  const payload = { bookId: albumId, chapIndex, play: true, expand };
-  // Dispatch the event and let the React player handle playback. Do not attempt
-  // to force synchronous playback here — that logic was reverted per project
-  // preference to keep the player island handling play behavior.
-  window.playerPlay(payload);
-});
-
 // simple share button handling
 document.addEventListener('click', (ev) => {
   const anyEv = ev;
@@ -103,10 +146,31 @@ document.addEventListener('click', (ev) => {
 });
 
 // Re-dispatch app:navigation on initial load so components relying on it can init
-window.dispatchEvent(new Event('app:init'));`}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    window.dispatchEvent(new Event('app:init'));
+  });
+} else {
+  window.dispatchEvent(new Event('app:init'));
+}
+})();
+
+console.log('Script initialization complete, window.playerPlay:', typeof window.playerPlay);`}
     </script>
   </head>
   <body class="bg-slate-600 text-white min-h-screen">
+    <!-- Ensure playerPlay is available immediately - runs first -->
+    <script is:inline>
+      window.playerPlay = window.playerPlay || function (payload) {
+        try { 
+          console.log('playerPlay called with:', payload);
+          window.dispatchEvent(new CustomEvent('player:play', { detail: payload })); 
+        } catch (e) { 
+          console.error('playerPlay error:', e);
+        }
+      };
+      console.log('playerPlay initialized, type:', typeof window.playerPlay);
+    </script>
     <div class="min-h-screen flex flex-col">
       <header class="fixed top-0 left-0 right-0 z-40">
         <div class="p-4 h-16 flex items-center justify-between max-w-4xl mx-auto w-full d">
