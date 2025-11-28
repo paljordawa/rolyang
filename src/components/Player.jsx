@@ -15,45 +15,272 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
   // Start collapsed by default — only expand on a direct play event or when Layout passes start props
   const [expanded, setExpanded] = useState(false);
 
+  // Track current audio source to avoid unnecessary reloads
+  const currentAudioSrcRef = useRef(null);
+  const wasPlayingRef = useRef(false);
+  const audioElementRef = useRef(null);
+  const lastKnownTimeRef = useRef(0);
+  const lastKnownAlbumChapRef = useRef({ albumId: null, chapId: null });
+
+  // Normalize URL for comparison (handle relative/absolute differences)
+  const normalizeUrl = (url) => {
+    if (!url) return '';
+    try {
+      // Convert to absolute URL for comparison
+      const a = document.createElement('a');
+      a.href = url;
+      return a.href;
+    } catch (e) {
+      return url;
+    }
+  };
+
+  // Ensure audio element persists across re-renders
   useEffect(() => {
-    const audio = audioRef.current;
+    if (!audioRef.current) return;
+    audioElementRef.current = audioRef.current;
+  }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current || audioElementRef.current;
     if (!audio) return;
     const album = albums[albumIdx]; if (!album) return;
     const chap = album.chapters[chapIdx]; if (!chap) return;
-    audio.src = chap.audio;
-    audio.preload = 'metadata';
-    audio.src = chap.audio;
-    audio.preload = 'metadata';
+    
+    // Only change source if it's different from current
+    const newSrc = chap.audio;
+    const normalizedNewSrc = normalizeUrl(newSrc);
+    const normalizedCurrentSrc = normalizeUrl(currentAudioSrcRef.current);
+    
+    // Get current playback state - use ref to preserve across renders
+    const currentTime = audio.currentTime || lastKnownTimeRef.current;
+    const wasPlaying = !audio.paused && !audio.ended;
+    
+    // Update last known time continuously
+    if (currentTime > 0) {
+      lastKnownTimeRef.current = currentTime;
+    }
+    
+    // Save current position before any changes (for previous track)
+    if (normalizedCurrentSrc && normalizedCurrentSrc !== normalizedNewSrc && lastKnownTimeRef.current > 0) {
+      try {
+        const prevAlbum = albums.find(a => {
+          return a.chapters.some(c => normalizeUrl(c.audio) === normalizedCurrentSrc);
+        });
+        if (prevAlbum) {
+          const prevChap = prevAlbum.chapters.find(c => normalizeUrl(c.audio) === normalizedCurrentSrc);
+          if (prevChap) {
+            localStorage.setItem(`pos:${prevAlbum.id}:${prevChap.id}`, String(lastKnownTimeRef.current));
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to save position:', e);
+      }
+    }
+    
+    // If same source, don't reload - preserve everything
+    if (normalizedCurrentSrc === normalizedNewSrc && audio.src) {
+      // Get saved position as fallback
+      const saved = localStorage.getItem(`pos:${album.id}:${chap.id}`);
+      const savedTime = saved ? Number(saved) : 0;
+      
+      // Restore time from ref or saved position if audio was reset or time is off
+      const targetTime = lastKnownTimeRef.current > 0 ? lastKnownTimeRef.current : (savedTime > 2 ? savedTime : currentTime);
+      
+      if (targetTime > 0 && Math.abs(audio.currentTime - targetTime) > 1) {
+        // Time is significantly off, restore it
+        audio.currentTime = targetTime;
+        setCurrent(targetTime);
+        lastKnownTimeRef.current = targetTime;
+      } else if (currentTime > 0) {
+        // Update ref with current time
+        lastKnownTimeRef.current = currentTime;
+      }
+      
+      // Update playback rate if needed
+      if (audio.playbackRate !== speed) {
+        audio.playbackRate = speed;
+      }
+      
+      // Update saved position continuously
+      if (currentTime > 0) {
+        localStorage.setItem(`pos:${album.id}:${chap.id}`, String(currentTime));
+      }
+      
+      // Update refs
+      lastKnownAlbumChapRef.current = { albumId: album.id, chapId: chap.id };
+      
+      // Ensure playback continues if it should be playing
+      if (isPlaying && audio.paused && !audio.ended) {
+        audio.play().catch(e => console.warn('Resume play failed:', e));
+      }
+      
+      return;
+    }
+    
+    // Store playback state before changing source
+    const wasActuallyPlaying = wasPlaying && normalizedCurrentSrc === normalizedNewSrc;
+    wasPlayingRef.current = wasActuallyPlaying;
+    
+    // If switching tracks, preserve current time for potential restore
+    const previousTime = normalizedCurrentSrc && normalizedCurrentSrc !== normalizedNewSrc ? lastKnownTimeRef.current : null;
+    
+    currentAudioSrcRef.current = newSrc;
+    lastKnownAlbumChapRef.current = { albumId: album.id, chapId: chap.id };
+    
+    // Only change src if it's actually different to avoid interrupting playback
+    const currentAudioSrc = normalizeUrl(audio.src);
+    if (currentAudioSrc !== normalizedNewSrc || !audio.src) {
+      const wasPaused = audio.paused;
+      
+      audio.src = newSrc;
+      audio.preload = 'auto'; // Change to 'auto' to load faster
+      
+      // Restore time if we had a previous position
+      const saved = localStorage.getItem(`pos:${album.id}:${chap.id}`);
+      const timeToRestore = saved && Number(saved) > 2 ? Number(saved) : (previousTime || 0);
+      
+      // Set time immediately if audio is already loaded, otherwise wait for metadata
+      const setTime = (targetTime) => {
+        if (targetTime > 0) {
+          if (audio.readyState >= 2) {
+            // Audio is ready, set time immediately
+            audio.currentTime = targetTime;
+            setCurrent(targetTime);
+          } else {
+            // Wait for metadata
+            const setTimeOnLoad = () => {
+              if (audio.readyState >= 1) {
+                audio.currentTime = targetTime;
+                setCurrent(targetTime);
+                audio.removeEventListener('loadedmetadata', setTimeOnLoad);
+                audio.removeEventListener('canplay', setTimeOnLoad);
+              }
+            };
+            audio.addEventListener('loadedmetadata', setTimeOnLoad);
+            audio.addEventListener('canplay', setTimeOnLoad);
+          }
+        }
+      };
+      
+      if (timeToRestore > 0) {
+        setTime(timeToRestore);
+      }
+      
+      // If it was playing before or isPlaying is true, resume after load
+      if ((!wasPaused && wasActuallyPlaying) || isPlaying) {
+        const resumePlay = () => {
+          audio.play().catch(e => {
+            console.warn('Auto-resume prevented:', e);
+            // Don't set isPlaying to false here, let the user retry
+          });
+          audio.removeEventListener('canplay', resumePlay);
+        };
+        // Try multiple events to catch when audio is ready
+        audio.addEventListener('canplay', resumePlay);
+        audio.addEventListener('canplaythrough', resumePlay);
+        // Also try loadeddata as a fallback
+        audio.addEventListener('loadeddata', resumePlay);
+      }
+    }
+    
     audio.playbackRate = speed;
 
-    const saved = localStorage.getItem(`pos:${album.id}:${chap.id}`);
-    if (saved && Number(saved) > 2) audio.currentTime = Number(saved);
-
-    const onLoaded = () => setDuration(audio.duration || 0);
-    const onTime = () => setCurrent(audio.currentTime || 0);
+    const onLoaded = () => {
+      setDuration(audio.duration || 0);
+      // If isPlaying is true but audio isn't playing, start it
+      if (isPlaying && audio.paused) {
+        audio.play().catch(e => {
+          console.warn('Auto-play on load failed:', e);
+        });
+      }
+    };
+    const onTime = () => {
+      const time = audio.currentTime || 0;
+      setCurrent(time);
+      // Update ref continuously
+      if (time > 0) {
+        lastKnownTimeRef.current = time;
+      }
+    };
     const onEnd = () => {
       if (chapIdx < album.chapters.length - 1) setChapIdx(c => c + 1);
       else setIsPlaying(false);
     };
+    const onPlay = () => {
+      setIsPlaying(true);
+      wasPlayingRef.current = true;
+    };
+    const onPause = () => {
+      setIsPlaying(false);
+      wasPlayingRef.current = false;
+    };
+    const onCanPlay = () => {
+      // When audio can play and isPlaying is true, ensure it starts
+      if (isPlaying && audio.paused) {
+        audio.play().catch(e => {
+          console.warn('Auto-play on canplay failed:', e);
+        });
+      }
+    };
+    
     audio.addEventListener('loadedmetadata', onLoaded);
     audio.addEventListener('timeupdate', onTime);
     audio.addEventListener('ended', onEnd);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('canplay', onCanPlay);
+    
     return () => {
       try { audio?.removeEventListener('loadedmetadata', onLoaded); } catch (e) {}
       try { audio?.removeEventListener('timeupdate', onTime); } catch (e) {}
       try { audio?.removeEventListener('ended', onEnd); } catch (e) {}
+      try { audio?.removeEventListener('play', onPlay); } catch (e) {}
+      try { audio?.removeEventListener('pause', onPause); } catch (e) {}
+      try { audio?.removeEventListener('canplay', onCanPlay); } catch (e) {}
     };
-  }, [albumIdx, chapIdx, albums, speed]);
+  }, [albumIdx, chapIdx, albums, speed, isPlaying]);
 
-  // persist position
+  // persist position - save more frequently and on navigation
   useEffect(() => {
-    const t = setInterval(() => {
-      const a = audioRef.current;
-      if (!a) return;
-      const b = albums[albumIdx]; const c = b?.chapters[chapIdx];
-      if (b && c) localStorage.setItem(`pos:${b.id}:${c.id}`, String(a.currentTime));
-    }, 5000);
-    return () => clearInterval(t);
+    const a = audioRef.current;
+    if (!a) return;
+    const b = albums[albumIdx]; const c = b?.chapters[chapIdx];
+    if (!b || !c) return;
+    
+    // Save immediately
+    const savePosition = () => {
+      try {
+        const currentTime = a.currentTime;
+        if (currentTime > 0 && isFinite(currentTime)) {
+          localStorage.setItem(`pos:${b.id}:${c.id}`, String(currentTime));
+        }
+      } catch (e) {
+        console.warn('Failed to save position:', e);
+      }
+    };
+    
+    // Save every 2 seconds (more frequent)
+    const t = setInterval(savePosition, 2000);
+    
+    // Also save on timeupdate (but throttle it)
+    let lastSave = 0;
+    const onTimeUpdate = () => {
+      const now = Date.now();
+      if (now - lastSave > 1000) { // Save at most once per second
+        savePosition();
+        lastSave = now;
+      }
+    };
+    
+    a.addEventListener('timeupdate', onTimeUpdate);
+    
+    return () => {
+      clearInterval(t);
+      try { a.removeEventListener('timeupdate', onTimeUpdate); } catch (e) {}
+      // Save one final time on cleanup
+      savePosition();
+    };
   }, [albumIdx, chapIdx, albums]);
 
   // media session
@@ -95,24 +322,35 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     (async () => {
       if (isPlaying) {
         try {
-          // start from 0 volume then fade to 1
-          try { a.volume = 0; } catch (e) {}
-          await a.play().catch(() => {});
-          if (!mounted) return;
-          await fade(0, 1, 350);
-        } catch (e) { }
+          // Only fade if audio was paused, otherwise keep playing smoothly
+          const wasPaused = a.paused;
+          if (wasPaused) {
+            // start from 0 volume then fade to 1
+            try { a.volume = 0; } catch (e) {}
+            await a.play().catch(() => {});
+            if (!mounted) return;
+            await fade(0, 1, 350);
+          } else {
+            // Already playing, just ensure volume is at max
+            try { a.volume = 1; } catch (e) {}
+          }
+        } catch (e) { 
+          // If play fails, try to resume
+          try { await a.play(); } catch (e2) {}
+        }
       } else {
         try {
           const curVol = typeof a.volume === 'number' ? a.volume : 1;
           await fade(curVol, 0, 250);
           if (!mounted) return;
-          if (!mounted) return;
           a.pause();
-        } catch (e) { a.pause(); }
+        } catch (e) { 
+          try { a.pause(); } catch (e2) {}
+        }
       }
     })();
     return () => { mounted = false; };
-  }, [isPlaying, speed, albumIdx, chapIdx]);
+  }, [isPlaying, speed]);
 
   function formatTime(s) { if (!s || isNaN(s)) return '0:00'; const m = Math.floor(s / 60); const sec = Math.floor(s % 60).toString().padStart(2, '0'); return `${m}:${sec}`; }
   function seekTo(v) { if (audioRef.current) audioRef.current.currentTime = Number(v); }
@@ -169,8 +407,41 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
           }
         }
         setExpanded(detail.expand !== false);
-        setIsPlaying(detail.play === false ? false : true);
-        console.log('Player state updated - playing:', detail.play !== false);
+        
+        // Set playing state and ensure audio starts
+        const shouldPlay = detail.play !== false;
+        setIsPlaying(shouldPlay);
+        
+        // If we should play, ensure audio starts after source is set
+        if (shouldPlay) {
+          // Use a small delay to ensure state updates have propagated
+          setTimeout(() => {
+            const audio = audioRef.current;
+            if (audio && audio.src) {
+              // If audio is ready, play immediately
+              if (audio.readyState >= 2) {
+                audio.play().catch(e => {
+                  console.warn('Immediate play failed, will retry:', e);
+                  // Retry when audio is ready
+                  const retryPlay = () => {
+                    audio.play().catch(e2 => console.warn('Retry play failed:', e2));
+                    audio.removeEventListener('canplay', retryPlay);
+                  };
+                  audio.addEventListener('canplay', retryPlay);
+                });
+              } else {
+                // Wait for audio to be ready
+                const startPlay = () => {
+                  audio.play().catch(e => console.warn('Play failed:', e));
+                  audio.removeEventListener('canplay', startPlay);
+                };
+                audio.addEventListener('canplay', startPlay);
+              }
+            }
+          }, 50);
+        }
+        
+        console.log('Player state updated - playing:', shouldPlay);
       } catch (e) {
         console.error('Player play handler error:', e);
       }
