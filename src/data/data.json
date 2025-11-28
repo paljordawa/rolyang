@@ -1,6 +1,6 @@
 [
   {
-    "id": "book-1",
+    "id": "album-1",
     "title": "The Mountain Path",
     "author": "Kygo",
     "cover": "/thumbnail/mn.jpg",
@@ -34,7 +34,7 @@
     ]
   },
   {
-    "id": "book-2",
+    "id": "album-2",
     "title": "Mixed Genre",
     "author": "Various Artist",
     "cover": "/thumbnail/file.jpg",
@@ -86,7 +86,7 @@
     ]
   },
   {
-    "id": "book-3",
+    "id": "album-3",
     "title": "Hexagon",
     "author": "Don Diablo",
     "cover": "/thumbnail/gamru.jpg",
@@ -132,3 +132,4 @@
     ]
   }
 ]
+

@@ -1,7 +1,7 @@
 ---
 import { ViewTransitions } from 'astro:transitions';
 import Player from '../components/Player.jsx';
-import books from '../data/books.json';
+import albums from '../data/data.json';
 import "../styles.css"
 const { hideNav, backHref, playerStart, hidePlayerUntilPlaying } = Astro.props;
 ---
@@ -98,7 +98,7 @@ const { hideNav, backHref, playerStart, hidePlayerUntilPlaying } = Astro.props;
         <div class="max-w-4xl mx-auto px-4">
           <div class="pointer-events-auto">
             <!-- hydrate the Player island on the client when it loads -->
-            <Player client:load books={(books as any)} startBookId={playerStart?.startBookId} startChapIndex={playerStart?.startChapIndex} />
+            <Player client:load books={(albums as any)} startBookId={playerStart?.startBookId} startChapIndex={playerStart?.startChapIndex} />
           </div>
         </div>
       </div>

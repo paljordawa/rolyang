@@ -1,31 +1,31 @@
 ---
 import { ViewTransitions } from 'astro:transitions';
 import Layout from '../../../layouts/Layout.astro';
-import books from '../../../data/books.json';
+import albums from '../../../data/data.json';
 
 export async function getStaticPaths() {
-  return books.flatMap((b) =>
-    b.chapters.map((_, i) => ({ params: { bookId: b.id, chapterId: String(i) } }))
+  return albums.flatMap((b) =>
+    b.chapters.map((_, i) => ({ params: { albumId: b.id, chapterId: String(i) } }))
   );
 }
 
-const { bookId, chapterId } = Astro.params;
-const book = books.find(b => b.id === bookId);
-const chapter = book?.chapters?.[Number(chapterId)];
+const { albumId, chapterId } = Astro.params;
+const album = albums.find(b => b.id === albumId);
+const chapter = album?.chapters?.[Number(chapterId)];
 
 // Coerce / normalize props passed into the client `Player` component to avoid
 // strict prop type mismatches during build-time type checking.
 // Player is provided as a persistent React island in the site layout (bottom of the page)
 ---
-<Layout hideNav backHref={book ? `/book/${book.id}` : '/library'} playerStart={{ startBookId: book?.id ?? undefined, startChapIndex: Number(chapterId) }}>
+<Layout hideNav backHref={album ? `/album/${album.id}` : '/library'} playerStart={{ startBookId: album?.id ?? undefined, startChapIndex: Number(chapterId) }}>
   <section class="max-w-md mx-auto  text-center" >
-    {book && chapter ? (
+    {album && chapter ? (
         <div class="p-6 bg-white/5 rounded-3xl text-left">
           <div class="flex items-center gap-4">
-            <img src={book.cover} alt={book.title} class="w-28 h-28 rounded-lg object-cover shadow-md" />
+            <img src={album.cover} alt={album.title} class="w-28 h-28 rounded-lg object-cover shadow-md" />
             <div>
-              <div class="text-lg font-semibold">{book.title}</div>
-              <div class="text-sm text-white/70">{book.author}</div>
+              <div class="text-lg font-semibold">{album.title}</div>
+              <div class="text-sm text-white/70">{album.author}</div>
               <div class="mt-2 text-sm text-white/80">{chapter.title}</div>
             </div>
           </div>
@@ -35,8 +35,9 @@ const chapter = book?.chapters?.[Number(chapterId)];
     ) : (
       <div class="text-center text-white/80 py-20">
         <h2 class="text-2xl font-bold mb-2">Chapter not found</h2>
-        <p>Please check the URL or go back to the book page.</p>
+        <p>Please check the URL or go back to the album page.</p>
       </div>
     )}
   </section>
 </Layout>
+

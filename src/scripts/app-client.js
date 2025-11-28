@@ -62,13 +62,13 @@ window.addEventListener('popstate', (e) => {
 // delegation for player actions using data attributes
 document.addEventListener('click', (ev) => {
   const anyEv = ev;
-  const el = anyEv.target && anyEv.target.closest ? anyEv.target.closest('[data-player-book]') : null;
+  const el = anyEv.target && anyEv.target.closest ? (anyEv.target.closest('[data-player-album]') || anyEv.target.closest('[data-player-book]')) : null;
   if (!el) return;
   ev.preventDefault();
-  const bookId = el.dataset.playerBook;
+  const albumId = el.dataset.playerAlbum || el.dataset.playerBook;
   const chapIndex = el.dataset.playerChap ? Number(el.dataset.playerChap) : 0;
   const expand = el.dataset.playerExpand !== 'false';
-  const payload = { bookId, chapIndex, play: true, expand };
+  const payload = { bookId: albumId, chapIndex, play: true, expand };
   // Dispatch the event and let the React player handle playback. Do not attempt
   // to force synchronous playback here — that logic was reverted per project
   // preference to keep the player island handling play behavior.

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-export default function Player({ books = [], startBookId = null, startChapIndex = 0 }) {
+export default function Player({ books: albums = [], startBookId: startAlbumId = null, startChapIndex = 0 }) {
   const audioRef = useRef(null);
-  const [bookIdx, setBookIdx] = useState(() => {
-    const idx = books.findIndex(b => b.id === startBookId);
+  const [albumIdx, setAlbumIdx] = useState(() => {
+    const idx = albums.findIndex(b => b.id === startAlbumId);
     return idx >= 0 ? idx : 0;
   });
   const [chapIdx, setChapIdx] = useState(startChapIndex || 0);
@@ -18,21 +18,21 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const book = books[bookIdx]; if (!book) return;
-    const chap = book.chapters[chapIdx]; if (!chap) return;
+    const album = albums[albumIdx]; if (!album) return;
+    const chap = album.chapters[chapIdx]; if (!chap) return;
     audio.src = chap.audio;
     audio.preload = 'metadata';
     audio.src = chap.audio;
     audio.preload = 'metadata';
     audio.playbackRate = speed;
 
-    const saved = localStorage.getItem(`pos:${book.id}:${chap.id}`);
+    const saved = localStorage.getItem(`pos:${album.id}:${chap.id}`);
     if (saved && Number(saved) > 2) audio.currentTime = Number(saved);
 
     const onLoaded = () => setDuration(audio.duration || 0);
     const onTime = () => setCurrent(audio.currentTime || 0);
     const onEnd = () => {
-      if (chapIdx < book.chapters.length - 1) setChapIdx(c => c + 1);
+      if (chapIdx < album.chapters.length - 1) setChapIdx(c => c + 1);
       else setIsPlaying(false);
     };
     audio.addEventListener('loadedmetadata', onLoaded);
@@ -43,23 +43,23 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
       try { audio?.removeEventListener('timeupdate', onTime); } catch (e) {}
       try { audio?.removeEventListener('ended', onEnd); } catch (e) {}
     };
-  }, [bookIdx, chapIdx, books, speed]);
+  }, [albumIdx, chapIdx, albums, speed]);
 
   // persist position
   useEffect(() => {
     const t = setInterval(() => {
       const a = audioRef.current;
       if (!a) return;
-      const b = books[bookIdx]; const c = b?.chapters[chapIdx];
+      const b = albums[albumIdx]; const c = b?.chapters[chapIdx];
       if (b && c) localStorage.setItem(`pos:${b.id}:${c.id}`, String(a.currentTime));
     }, 5000);
     return () => clearInterval(t);
-  }, [bookIdx, chapIdx, books]);
+  }, [albumIdx, chapIdx, albums]);
 
   // media session
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
-    const b = books[bookIdx]; const c = b?.chapters[chapIdx]; if (!b || !c) return;
+    const b = albums[albumIdx]; const c = b?.chapters[chapIdx]; if (!b || !c) return;
     navigator.mediaSession.metadata = new window.MediaMetadata({ title: c.title, artist: b.author, album: b.title, artwork: [{ src: b.cover, sizes: '512x512', type: 'image/png' }] });
     navigator.mediaSession.setActionHandler('play', async () => { await audioRef.current?.play(); setIsPlaying(true); });
     navigator.mediaSession.setActionHandler('pause', () => { audioRef.current?.pause(); setIsPlaying(false); });
@@ -67,7 +67,7 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
     navigator.mediaSession.setActionHandler('nexttrack', () => { if (chapIdx < b.chapters.length - 1) setChapIdx(ci => ci + 1); });
     navigator.mediaSession.setActionHandler('seekto', (details) => { if (!audioRef.current) return; if (details.fastSeek && 'fastSeek' in audioRef.current) audioRef.current.fastSeek(details.seekTime); else audioRef.current.currentTime = details.seekTime; });
     return () => { try { navigator.mediaSession.setActionHandler('play', null); navigator.mediaSession.setActionHandler('pause', null); } catch (e) { } };
-  }, [bookIdx, chapIdx, books]);
+  }, [albumIdx, chapIdx, albums]);
 
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
@@ -112,7 +112,7 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
       }
     })();
     return () => { mounted = false; };
-  }, [isPlaying, speed, bookIdx, chapIdx]);
+  }, [isPlaying, speed, albumIdx, chapIdx]);
 
   function formatTime(s) { if (!s || isNaN(s)) return '0:00'; const m = Math.floor(s / 60); const sec = Math.floor(s % 60).toString().padStart(2, '0'); return `${m}:${sec}`; }
   function seekTo(v) { if (audioRef.current) audioRef.current.currentTime = Number(v); }
@@ -120,8 +120,8 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
 
   const speedOptions = [0.5, 0.75, 1, 1.25, 1.5, 2];
   // (removed: previously exposed a synchronous player API for gesture-based play)
-  const book = books[bookIdx] || { title: '', author: '', cover: '', chapters: [] };
-  const chap = (book?.chapters && book.chapters[chapIdx]) || {};
+  const album = albums[albumIdx] || { title: '', author: '', cover: '', chapters: [] };
+  const chap = (album?.chapters && album.chapters[chapIdx]) || {};
 
   function cycleSpeed() {
     const i = speedOptions.indexOf(speed);
@@ -133,13 +133,13 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
 
   // react to layout-provided start props (when the Player is mounted in Layout)
   useEffect(() => {
-    if (!startBookId) return;
-    const idx = books.findIndex(b => b.id === startBookId);
-    if (idx >= 0) setBookIdx(idx);
+    if (!startAlbumId) return;
+    const idx = albums.findIndex(b => b.id === startAlbumId);
+    if (idx >= 0) setAlbumIdx(idx);
     if (typeof startChapIndex === 'number') setChapIdx(startChapIndex);
     setIsPlaying(true);
     setExpanded(true);
-  }, [startBookId, startChapIndex, books]);
+  }, [startAlbumId, startChapIndex, albums]);
 
   // react to data-player-* buttons wired through app-client.js
   useEffect(() => {
@@ -147,11 +147,11 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
       try {
         const detail = (ev && ev.detail) || {};
         if (!detail.bookId) return;
-        const idx = books.findIndex((b) => b.id === detail.bookId);
+        const idx = albums.findIndex((b) => b.id === detail.bookId);
         if (idx < 0) return;
-        setBookIdx(idx);
+        setAlbumIdx(idx);
         if (typeof detail.chapIndex === 'number') {
-          const chapters = books[idx]?.chapters || [];
+          const chapters = albums[idx]?.chapters || [];
           const rawIndex = Number(detail.chapIndex);
           if (Number.isFinite(rawIndex)) {
             const maxIdx = Math.max(0, (chapters.length || 1) - 1);
@@ -165,19 +165,19 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
     }
     window.addEventListener('player:play', onPlayerPlay);
     return () => window.removeEventListener('player:play', onPlayerPlay);
-  }, [books]);
+  }, [albums]);
 
   useEffect(() => {
     try {
-      const book = books[bookIdx];
-      const chap = book?.chapters?.[chapIdx];
-      if (!book || !chap) return;
-      const detail = { bookId: book.id, chapIndex: chapIdx, isPlaying };
+      const album = albums[albumIdx];
+      const chap = album?.chapters?.[chapIdx];
+      if (!album || !chap) return;
+      const detail = { bookId: album.id, chapIndex: chapIdx, isPlaying };
       // expose latest state for pages that mount after the event fires
       window.__playerNowPlaying = detail;
       window.dispatchEvent(new CustomEvent('player:now-playing', { detail }));
     } catch (e) {}
-  }, [bookIdx, chapIdx, isPlaying, books]);
+  }, [albumIdx, chapIdx, isPlaying, albums]);
 
   // persist expanded/collapsed setting
   useEffect(() => {
@@ -195,8 +195,8 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
       const raw = localStorage.getItem('player:state');
       if (!raw) return;
       const state = JSON.parse(raw);
-      const bIdx = books.findIndex(b => b.id === state.bookId);
-      if (bIdx >= 0) setBookIdx(bIdx);
+      const bIdx = albums.findIndex(b => b.id === state.bookId);
+      if (bIdx >= 0) setAlbumIdx(bIdx);
       if (typeof state.chapIndex === 'number') setChapIdx(state.chapIndex);
       // restore position if available
       setTimeout(() => {
@@ -225,13 +225,13 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
         } catch (e) {}
       }, 30);
     } catch (e) { }
-  }, [books]);
+  }, [albums]);
 
   // Save player state when the page unloads or when the component unmounts
   useEffect(() => {
     const saveState = () => {
       try {
-        const b = books[bookIdx]; const c = b?.chapters?.[chapIdx];
+        const b = albums[albumIdx]; const c = b?.chapters?.[chapIdx];
         if (!b || !c) return;
         const st = { bookId: b.id, chapIndex: chapIdx, currentTime: audioRef.current?.currentTime || 0, isPlaying };
         localStorage.setItem('player:state', JSON.stringify(st));
@@ -245,7 +245,7 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
       window.removeEventListener('pagehide', saveState);
       window.removeEventListener('beforeunload', saveState);
     };
-  }, [bookIdx, chapIdx, isPlaying, books]);
+  }, [albumIdx, chapIdx, isPlaying, albums]);
 
   // prevent the page from scrolling while the player is open in full-screen
   useEffect(() => {
@@ -260,7 +260,7 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
   // share helper
   async function handleShare() {
     try {
-      const title = `${book.title}${chap.title ? ' — ' + chap.title : ''}`;
+      const title = `${album.title}${chap.title ? ' — ' + chap.title : ''}`;
       if (navigator.share) {
         await navigator.share({ title, url: location.href });
         return;
@@ -351,7 +351,7 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
   // download helper
   async function downloadCurrent() {
     try {
-      const b = books[bookIdx];
+      const b = albums[albumIdx];
       const c = b.chapters[chapIdx];
       const url = c?.audio;
       if (!url) return;
@@ -371,7 +371,7 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
       a.remove();
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (err) {
-      try { const b = books[bookIdx]; const c = b.chapters[chapIdx]; window.open(c?.audio || location.href, '_blank'); } catch (e) { }
+      try { const b = albums[albumIdx]; const c = b.chapters[chapIdx]; window.open(c?.audio || location.href, '_blank'); } catch (e) { }
     }
   }
 
@@ -386,10 +386,10 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
       <div className="w-full bg-white/5 dark:bg-black/40 backdrop-blur-md rounded-full px-4 py-2 shadow-sm animate-fade-in transition-all duration-300 ease-in-out relative">
         <audio ref={audioRef} preload="metadata" />
         <div className="flex items-center gap-4">
-          <img src={book.cover} alt="cover" className="w-10 h-10 rounded-md object-cover" />
+          <img src={album.cover} alt="cover" className="w-10 h-10 rounded-md object-cover" />
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold truncate">{chap.title || book.title}</div>
-            <div className="text-xs text-white/60 truncate">{book.title} — {book.author}</div>
+            <div className="text-sm font-semibold truncate">{chap.title || album.title}</div>
+            <div className="text-xs text-white/60 truncate">{album.title} — {album.author}</div>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => setIsPlaying(p => !p)} aria-label={isPlaying ? 'Pause' : 'Play'} className="p-2 rounded-full bg-purple-600 text-white">
@@ -468,10 +468,10 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
         </div>
 
         {/* simplified: only top-left minimize and top-right share (no duplicate collapse button) */}
-        <img src={book.cover} className="w-full h-[48vh] rounded-3xl mb-4 object-cover transform p-10 pt-14  transition-transform duration-500" style={{ transform: isPlaying ? 'scale(1.02)' : 'scale(1)' }} />
+        <img src={album.cover} className="w-full h-[48vh] rounded-3xl mb-4 object-cover transform p-10 pt-14  transition-transform duration-500" style={{ transform: isPlaying ? 'scale(1.02)' : 'scale(1)' }} />
         <div className="text-center mb-2">
           <div className="font-semibold text-lg">{chap.title}</div>
-          <div className="text-sm text-white/70">{book.title} — {book.author}</div>
+          <div className="text-sm text-white/70">{album.title} — {album.author}</div>
         </div>
 
         {/* fullscreen progress bar (top) — match island gradient, large thumb */}
@@ -520,7 +520,7 @@ export default function Player({ books = [], startBookId = null, startChapIndex 
             )}
           </button>
 
-          <button onClick={() => { if (chapIdx < book.chapters.length - 1) setChapIdx(ci => ci + 1); }} className="big-btn" aria-label="Next">
+          <button onClick={() => { if (chapIdx < album.chapters.length - 1) setChapIdx(ci => ci + 1); }} className="big-btn" aria-label="Next">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
               <path d="M12.5 12L4 6v12l8.5-6zM20 6h-2v12h2V6z" />
             </svg>

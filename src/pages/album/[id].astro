@@ -1,19 +1,19 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import books from '../../data/books.json';
+import albums from '../../data/data.json';
 
 export async function getStaticPaths() {
-  return books.map((b) => ({ params: { id: b.id } }));
+  return albums.map((b) => ({ params: { id: b.id } }));
 }
 
 const { id } = Astro.params;
-const book = books.find(b => b.id === id);
+const album = albums.find(b => b.id === id);
 ---
-<Layout backHref="/library" hideNav>
-  {book ? (
+<Layout backHref="/" hideNav>
+  {album ? (
     <div class="fixed top-0 left-0 right-0 h-[50vh] z-10 overflow-hidden flex items-end" aria-hidden="true"
-      style={`background-image: linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0.6)), url(${book.cover}); background-size: cover; background-position: center;`}>
-      <img src={book.cover} alt={book.title} class="sr-only" />
+      style={`background-image: linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0.6)), url(${album.cover}); background-size: cover; background-position: center;`}>
+      <img src={album.cover} alt={album.title} class="sr-only" />
       <div class="w-full h-36 bg-gradient-to-t from-slate-600 via-slate-700/10 "></div>
       
     </div>
@@ -21,16 +21,16 @@ const book = books.find(b => b.id === id);
 
   <section class="max-w-md mx-auto relative z-20 bg-gradient-to-t from-slate-600  to-slate-600/0 py-5">
     <div class="h-[20vh] "></div>
-    {book ? (
+    {album ? (
         <div class="text-center">
           <div class="mx-auto w-40 h-40 rounded-xl overflow-hidden shadow-lg mb-4 bg-gradient-to-b from-gray-900 to-black">
-            <img src={book.cover} alt={book.title} class="w-full h-full object-cover" />
+            <img src={album.cover} alt={album.title} class="w-full h-full object-cover" />
           </div>
-          <p class="mt-2 text-sm text-white/70">{book.description}</p>
-          <h1 class="page-title text-2xl font-bold mt-2">{book.title}</h1>
-          <p class="text-sm text-white/70">{book.author}</p>
+          <p class="mt-2 text-sm text-white/70">{album.description}</p>
+          <h1 class="page-title text-2xl font-bold mt-2">{album.title}</h1>
+          <p class="text-sm text-white/70">{album.author}</p>
           <div class="mt-3 flex items-center justify-center gap-4 text-xs text-white/60">
-            <div>{book.chapters.length} chapters</div>
+            <div>{album.chapters.length} chapters</div>
             <div>•</div>
             <div>{/* placeholder total duration */}3h 14m</div>
           </div>
@@ -49,20 +49,20 @@ const book = books.find(b => b.id === id);
           `}
         </style>
         <ul class="my-6 space-y-3 mb-52 ">
-          {book.chapters.map((ch, i) => (
+          {album.chapters.map((ch, i) => (
             <li
               class="flex items-center justify-between rounded-lg bg-white/6 hover:bg-white/8 transition"
               data-player-row
-              data-player-book={book.id}
+              data-player-album={album.id}
               data-player-chap={i}
             >
               <div class="flex items-center gap-3">
-                {/* <img src={book.cover} alt="cover" class="w-12 h-12 rounded-md object-cover" /> */}
+                {/* <img src={album.cover} alt="cover" class="w-12 h-12 rounded-md object-cover" /> */}
                 <div>
                   <div
                     class="font-medium text-white/70 transition-colors"
                     data-player-title
-                    data-player-book={book.id}
+                    data-player-album={album.id}
                     data-player-chap={i}
                   >
                     {ch.title}
@@ -70,7 +70,7 @@ const book = books.find(b => b.id === id);
                 </div>
               </div>
               <div class="text-xs text-white/60">{ch.duration}</div>
-              <button type="button" data-player-book={book.id} data-player-chap={i} data-player-expand="false" class="p-2 rounded-full bg-white/5 hover:bg-white/7 js-player-btn" aria-label={`Play ${ch.title}`}>
+              <button type="button" data-player-album={album.id} data-player-chap={i} data-player-expand="false" class="p-2 rounded-full bg-white/5 hover:bg-white/7 js-player-btn" aria-label={`Play ${ch.title}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-white">
                   <path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" />
                 </svg>
@@ -83,10 +83,10 @@ const book = books.find(b => b.id === id);
   function applyState(detail) {
     const titles = document.querySelectorAll('[data-player-title]');
     titles.forEach((title) => {
-      const bookId = title.getAttribute('data-player-book');
+      const albumId = title.getAttribute('data-player-album');
       const chapIndex = Number(title.getAttribute('data-player-chap'));
       const isMatch = detail
-        && detail.bookId === bookId
+        && detail.bookId === albumId
         && Number(detail.chapIndex) === chapIndex
         && detail.isPlaying !== false;
       const row = title.closest('[data-player-row]');
@@ -117,9 +117,10 @@ const book = books.find(b => b.id === id);
         </script>
     ) : (
       <div class="text-center text-white/80 py-20">
-        <h2 class="text-2xl font-bold mb-2">Book not found</h2>
-        <p>Please check the URL or go back to the book list.</p>
+        <h2 class="text-2xl font-bold mb-2">Album not found</h2>
+        <p>Please check the URL or go back to the album list.</p>
       </div>
     )}
   </section>
 </Layout>
+
