@@ -225,29 +225,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
           window.addEventListener('player:expanded', function(ev){ try { update(ev && ev.detail && ev.detail.expanded === true); } catch(e){} });
         })();
       </script>
-      { !hideNav ? (
-        <footer class="bg-white/6 dark:bg-black/40 text-white p-3 fixed bottom-4 left-4 right-4 rounded-3xl backdrop-blur-md shadow-lg md:hidden">
-          <div class="flex justify-around">
-            <a href="/" class="flex flex-col items-center text-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-            </svg>
-            <span>Home</span></a>
-            <a href="#" class="flex flex-col items-center text-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 13v-1a8 8 0 0116 0v1m-3 3h1a2 2 0 002-2v-3a9 9 0 10-18 0v3a2 2 0 002 2h1" />
-              </svg>
-              <span>Now</span>
-            </a>
-            <a href="/search" class="flex flex-col items-center text-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
-
-            <span>Search</span></a>
-          </div>
-        </footer>
-      ) : '' }
+     
 
       <!-- Persistent bottom player island - always mounted so audio keeps playing across navigation -->
       <div

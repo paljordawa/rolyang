@@ -699,7 +699,7 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
           </div>
         </div>
         {/* island progress bar placed above the island (not overlapping metadata) */}
-        <div className="absolute left-0 right-0 -top-8 flex justify-center pointer-events-none z-30 ">
+        <div className="left-0 right-0 flex justify-center pointer-events-none z-30  ">
           <div className="w-[calc(100%-1.5rem)] max-w-[calc(100%-1.5rem)] pointer-events-auto ">
             <div
               role="slider"
@@ -714,7 +714,7 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
               className="relative w-full cursor-pointer"
             
             >
-              <div className="h-2 w-full bg-white/10 rounded-3xl overflow-hidden relative">
+              <div className="h-[2px] w-full bg-white/10 rounded-3xl overflow-hidden relative mt-1">
                 {/* single gradient fill element with rounded corners; inner track clips the gradient so ends are pill-shaped */}
                 <div className="absolute left-0 top-0 h-2 bg-gradient-to-r from-purple-600 via-purple-400 to-pink-500 rounded-full" style={{ width: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%` }} />
               </div>
