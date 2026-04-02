@@ -28,7 +28,7 @@ const album = albums.find(b => b.id === id);
           </div>
           <p class="mt-2 text-sm text-white/70">{album.description}</p>
           <h1 class="page-title text-2xl font-bold mt-2">{album.title}</h1>
-          <p class="text-sm text-white/70">{album.author}</p>
+          <p class="text-sm text-white/70">{album.artist}</p>
           <div class="mt-3 flex items-center justify-center gap-4 text-xs text-white/60">
             <div>{album.chapters.length} chapters</div>
             <div>•</div>
@@ -56,9 +56,9 @@ const album = albums.find(b => b.id === id);
               data-player-album={album.id}
               data-player-chap={i}
             >
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-3 w-full">
                 {/* <img src={album.cover} alt="cover" class="w-12 h-12 rounded-md object-cover" /> */}
-                <div>
+                <div class="flex-1">
                   <div
                     class="text-sm text-white/70 transition-colors"
                     data-player-title
@@ -69,6 +69,7 @@ const album = albums.find(b => b.id === id);
                   </div>
                 </div>
               </div>
+              <div class="flex items-center gap-2">
               {/* <div class="text-xs text-white/60">{ch.duration}</div> */}
               <button 
                 type="button" 
@@ -83,7 +84,23 @@ const album = albums.find(b => b.id === id);
                   <path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" />
                 </svg>
               </button>
-            </li>
+              <button 
+                type="button" 
+                class="p-2 js-like-btn" 
+                data-album-id={album.id} 
+                data-chap-id={ch.id} 
+                data-liked={ch.liked ? "true" : "false"}
+                aria-label="Like"
+              >
+                <svg class="w-5 h-5 empty-heart stroke-white/50 hover:stroke-white fill-none stroke-2 pointer-events-none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+                <svg class="w-5 h-5 filled-heart text-[#1db954] hidden pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path>
+                </svg>
+              </button>
+            </div>
+          </li>
           ))}
         </ul>
         <script>
@@ -107,6 +124,49 @@ const album = albums.find(b => b.id === id);
       }
     });
   }
+
+  function initLikes() {
+    document.querySelectorAll('.js-like-btn').forEach(btn => {
+      const albumId = btn.getAttribute('data-album-id');
+      const chapId = btn.getAttribute('data-chap-id');
+      // Read actual state from local storage or fallback to dataset
+      const saved = localStorage.getItem('liked:' + albumId + ':' + chapId);
+      const isLiked = saved !== null ? saved === 'true' : btn.getAttribute('data-liked') === 'true';
+      
+      const empty = btn.querySelector('.empty-heart');
+      const filled = btn.querySelector('.filled-heart');
+      
+      if (isLiked) {
+        empty.classList.add('hidden');
+        filled.classList.remove('hidden');
+      } else {
+        empty.classList.remove('hidden');
+        filled.classList.add('hidden');
+      }
+
+      // attach listener once
+      if(!btn.dataset.initialized) {
+        btn.dataset.initialized = 'true';
+        btn.addEventListener('click', (e) => {
+           e.stopPropagation();
+           const currentlyLiked = !empty.classList.contains('hidden') ? false : true;
+           const newLiked = !currentlyLiked;
+           localStorage.setItem('liked:' + albumId + ':' + chapId, newLiked ? 'true' : 'false');
+           if (newLiked) {
+             empty.classList.add('hidden');
+             filled.classList.remove('hidden');
+           } else {
+             empty.classList.remove('hidden');
+             filled.classList.add('hidden');
+           }
+           window.dispatchEvent(new CustomEvent('player:like-sync'));
+        });
+      }
+    });
+  }
+
+  initLikes();
+  window.addEventListener('player:like-sync', initLikes);
   window.addEventListener('player:now-playing', (ev) => applyState(ev.detail));
   try {
     if (window.__playerNowPlaying) {

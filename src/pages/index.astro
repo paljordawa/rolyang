@@ -1,90 +1,91 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import albums from '../data/data.json';
+
+const time = new Date().getHours();
+let greeting = 'Good evening';
+if (time < 12) greeting = 'Good morning';
+else if (time < 18) greeting = 'Good afternoon';
 ---
 <Layout hidePlayerUntilPlaying>
-  <header class="px-4 py-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <div class="text-sm text-white/70">Music made for</div>
-        <h1 class="page-title text-2xl sm:text-3xl font-bold">Entertainment</h1>
-      </div>
-      <div class="flex items-center gap-3">
-        <img src={albums[0]?.cover ?? '/cover-placeholder.png'} alt="avatar" class="w-10 h-10 rounded-full object-cover" />
-        <button aria-label="Search" class="p-2 rounded bg-white/5">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>
-        </button>
-      </div>
+  <!-- Background Gradient for Home -->
+  <div class="absolute inset-0 bg-gradient-to-b from-purple-900/30 to-[#121212] h-80 pointer-events-none -z-10 transition-colors duration-500"></div>
+  
+  <div class="px-2 pt-2 md:pt-4 relative z-10">
+    <h1 class="page-title text-2xl sm:text-3xl font-bold mb-6 text-white">{greeting}</h1>
+    
+    <!-- Top Grid (6 items) -->
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-10">
+      {[...albums, ...albums].slice(0,6).map(album => (
+        <div 
+          class="flex items-center bg-white/5 hover:bg-white/20 transition-colors rounded-md overflow-hidden group cursor-pointer" 
+          data-player-album={album.id} 
+          data-player-chap={0} 
+          data-player-expand="false"
+        >
+          <img src={album.cover} alt={album.title} class="w-14 h-14 object-cover shadow-[0_4px_10px_rgba(0,0,0,0.3)]" />
+          <div class="px-3 flex-1 font-bold text-sm truncate text-white">{album.title}</div>
+          <div class="pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button class="w-10 h-10 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-[0_8px_8px_rgba(0,0,0,0.3)] hover:scale-105 hover:bg-[#1ed760] transition-all" aria-label={`Play ${album.title}`}>
+              <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
-  </header>
 
-  <main class="space-y-8 px-4 pb-8">
-    <section>
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="font-semibold text-lg">Mood</h2>
-        <a href="/library" class="text-sm text-white/70">see all</a>
+    <!-- Made For You Row -->
+    <section class="mb-10">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold text-2xl hover:underline cursor-pointer text-white">Made for you</h2>
+        <a href="/library" class="text-sm text-white/70 font-semibold hover:underline">Show all</a>
       </div>
-      <div class="flex gap-4 overflow-x-auto pb-2 -ml-1">
-        {albums.slice(0,6).map(album => (
-          <div class="w-36 flex-shrink-0 relative">
-            <a href={`/album/${album.id}`} class="block">
-              <div class="w-36 h-36 rounded-xl overflow-hidden shadow-md mb-2 relative">
-                <img src={album.cover} alt={album.title} class="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  data-player-album={album.id}
-                  data-player-chap={0}
-                  data-player-expand="true"
-                  class="absolute right-2 top-2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white js-player-btn"
-                  aria-label={`Play ${album.title}`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
-                    <path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" />
-                  </svg>
-                </button>
-              </div>
-            </a>
-            <div class="text-sm font-medium truncate">{album.title}</div>
-            <div class="text-xs text-white/60 truncate">{album.author}</div>
+      <div class="flex gap-5 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+        {albums.map(album => (
+          <div 
+            class="w-36 md:w-44 flex-shrink-0 relative group p-3 bg-[#181818] rounded-md hover:bg-[#282828] transition-colors cursor-pointer" 
+            data-player-album={album.id} 
+            data-player-chap={0} 
+            data-player-expand="false"
+          >
+            <div class="w-full rounded-md overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.5)] mb-4 relative aspect-square">
+              <img src={album.cover} alt={album.title} class="w-full h-full object-cover" />
+              <button class="absolute right-2 bottom-2 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black hover:bg-[#1ed760] transition-all play-btn-overlay" aria-label={`Play ${album.title}`}>
+                <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+              </button>
+            </div>
+            <div class="text-[15px] font-bold truncate text-white mb-1">{album.title}</div>
+            <div class="text-sm text-white/70 line-clamp-2 leading-tight">By {album.artist}</div>
           </div>
         ))}
       </div>
     </section>
 
-    <section>
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="font-semibold text-lg">Pop</h2>
-        <a href="/library" class="text-sm text-white/70">see all</a>
+    <!-- Recently Played Row -->
+    <section class="mb-10">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold text-2xl hover:underline cursor-pointer text-white">Recently played</h2>
+        <a href="/library" class="text-sm text-white/70 font-semibold hover:underline">Show all</a>
       </div>
-      <div class="flex gap-4 overflow-x-auto pb-2 -ml-1">
-        {albums.slice(1,7).map(album => (
-          <a href={`/album/${album.id}`} class="w-36 flex-shrink-0">
-            <div class="w-36 h-36 rounded-xl overflow-hidden shadow-md mb-2">
+      <div class="flex gap-5 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+        {[...albums].reverse().map(album => (
+          <div 
+            class="w-36 md:w-44 flex-shrink-0 relative group p-3 bg-[#181818] rounded-md hover:bg-[#282828] transition-colors cursor-pointer" 
+            data-player-album={album.id} 
+            data-player-chap={0} 
+            data-player-expand="false"
+          >
+            <div class="w-full rounded-md overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.5)] mb-4 relative aspect-square">
               <img src={album.cover} alt={album.title} class="w-full h-full object-cover" />
+              <button class="absolute right-2 bottom-2 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black hover:bg-[#1ed760] transition-all play-btn-overlay" aria-label={`Play ${album.title}`}>
+                <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+              </button>
             </div>
-            <div class="text-sm font-medium truncate">{album.title}</div>
-            <div class="text-xs text-white/60 truncate">{album.author}</div>
-          </a>
+            <div class="text-[15px] font-bold truncate text-white mb-1">{album.title}</div>
+            <div class="text-sm text-white/70 line-clamp-2 leading-tight">By {album.artist}</div>
+          </div>
         ))}
       </div>
     </section>
-
-    <section>
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="font-semibold text-lg">Jump back in</h2>
-        <a href="/library" class="text-sm text-white/70">see all</a>
-      </div>
-      <div class="flex gap-4 overflow-x-auto pb-2 -ml-1">
-        {albums.map(album => (
-          <a href={`/album/${album.id}`} class="w-36 flex-shrink-0">
-            <div class="w-36 h-36 rounded-xl overflow-hidden shadow-md mb-2">
-              <img src={album.cover} alt={album.title} class="w-full h-full object-cover" />
-            </div>
-            <div class="text-sm font-medium truncate">{album.title}</div>
-            <div class="text-xs text-white/60 truncate">{album.author}</div>
-          </a>
-        ))}
-      </div>
-    </section>
-  </main>
+  </div>
 </Layout>

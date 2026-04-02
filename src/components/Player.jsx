@@ -14,6 +14,32 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
   const draggingBarRef = useRef(null);
   // Start collapsed by default — only expand on a direct play event or when Layout passes start props
   const [expanded, setExpanded] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [shuffle, setShuffle] = useState(false);
+  const [repeat, setRepeat] = useState(false);
+
+  const handlePrevious = () => {
+    if (current > 3 || chapIdx === 0) {
+      if (audioRef.current) audioRef.current.currentTime = 0;
+      setCurrent(0);
+    } else if (chapIdx > 0) {
+      const album = albums[albumIdx];
+      if (album && album.chapters) {
+          const prevChap = album.chapters[chapIdx - 1];
+          if (prevChap) localStorage.setItem(`pos:${album.id}:${prevChap.id}`, '0');
+      }
+      setChapIdx(ci => ci - 1);
+    }
+  };
+
+  const handleNext = () => {
+    const album = albums[albumIdx];
+    if (album && album.chapters && chapIdx < album.chapters.length - 1) {
+      const nextChap = album.chapters[chapIdx + 1];
+      if (nextChap) localStorage.setItem(`pos:${album.id}:${nextChap.id}`, '0');
+      setChapIdx(ci => ci + 1);
+    }
+  };
 
   // Track current audio source to avoid unnecessary reloads
   const currentAudioSrcRef = useRef(null);
@@ -21,6 +47,9 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
   const audioElementRef = useRef(null);
   const lastKnownTimeRef = useRef(0);
   const lastKnownAlbumChapRef = useRef({ albumId: null, chapId: null });
+
+
+  const [isLiked, setIsLiked] = useState(false);
 
   // Normalize URL for comparison (handle relative/absolute differences)
   const normalizeUrl = (url) => {
@@ -47,6 +76,11 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     const album = albums[albumIdx]; if (!album) return;
     const chap = album.chapters[chapIdx]; if (!chap) return;
     
+    // Update liked state
+    const savedLiked = localStorage.getItem(`liked:${album.id}:${chap.id}`);
+    const currentlyLiked = savedLiked !== null ? savedLiked === 'true' : chap.liked === true;
+    setIsLiked(currentlyLiked);
+
     // Only change source if it's different from current
     const newSrc = chap.audio;
     const normalizedNewSrc = normalizeUrl(newSrc);
@@ -204,7 +238,10 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
       }
     };
     const onEnd = () => {
-      if (chapIdx < album.chapters.length - 1) setChapIdx(c => c + 1);
+      if (chapIdx < album.chapters.length - 1) {
+        localStorage.setItem(`pos:${album.id}:${album.chapters[chapIdx + 1].id}`, '0');
+        setChapIdx(c => c + 1);
+      }
       else setIsPlaying(false);
     };
     const onPlay = () => {
@@ -224,6 +261,20 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
       }
     };
     
+    const handleLikeSync = () => {
+      const album = albums[albumIdx];
+      const chap = album?.chapters[chapIdx];
+      if (!album || !chap) return;
+      const savedLiked = localStorage.getItem(`liked:${album.id}:${chap.id}`);
+      setIsLiked(savedLiked !== null ? savedLiked === 'true' : chap.liked === true);
+    };
+
+    window.addEventListener('player:like-sync', handleLikeSync);
+    window.addEventListener('player:play', onPlayReq);
+    window.addEventListener('keydown', handleGlobalKeydown);
+    window.addEventListener('player:expanded', onExpandReq);
+    window.addEventListener('player:collapsed', onCollapseReq);
+    
     audio.addEventListener('loadedmetadata', onLoaded);
     audio.addEventListener('timeupdate', onTime);
     audio.addEventListener('ended', onEnd);
@@ -232,6 +283,11 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     audio.addEventListener('canplay', onCanPlay);
     
     return () => {
+      window.removeEventListener('player:like-sync', handleLikeSync);
+      window.removeEventListener('player:play', onPlayReq);
+      window.removeEventListener('keydown', handleGlobalKeydown);
+      window.removeEventListener('player:expanded', onExpandReq);
+      window.removeEventListener('player:collapsed', onCollapseReq);
       try { audio?.removeEventListener('loadedmetadata', onLoaded); } catch (e) {}
       try { audio?.removeEventListener('timeupdate', onTime); } catch (e) {}
       try { audio?.removeEventListener('ended', onEnd); } catch (e) {}
@@ -360,6 +416,73 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
   // (removed: previously exposed a synchronous player API for gesture-based play)
   const album = albums[albumIdx] || { title: '', author: '', cover: '', chapters: [] };
   const chap = (album?.chapters && album.chapters[chapIdx]) || {};
+
+  const toggleLike = (e) => {
+    if (e) e.stopPropagation();
+    const album = albums[albumIdx];
+    const chap = album?.chapters[chapIdx];
+    if (!album || !chap) return;
+
+    const newLiked = !isLiked;
+    setIsLiked(newLiked);
+    localStorage.setItem(`liked:${album.id}:${chap.id}`, newLiked ? 'true' : 'false');
+    window.dispatchEvent(new CustomEvent('player:like-sync'));
+  };
+
+  useEffect(() => {
+    const handleLikeSync = () => {
+      const album = albums[albumIdx];
+      const chap = album?.chapters[chapIdx];
+      if (!album || !chap) return;
+      const savedLiked = localStorage.getItem(`liked:${album.id}:${chap.id}`);
+      setIsLiked(savedLiked !== null ? savedLiked === 'true' : chap.liked === true);
+    };
+    window.addEventListener('player:like-sync', handleLikeSync);
+    return () => window.removeEventListener('player:like-sync', handleLikeSync);
+  }, [albumIdx, chapIdx, albums]);
+
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      const album = albums[albumIdx];
+      const chap = album?.chapters[chapIdx];
+      if (album && chap) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: chap.title || 'Unknown Title',
+          artist: album.artist || 'Unknown Artist',
+          album: album.title || 'Unknown Album',
+          artwork: [
+            { src: album.cover, sizes: '96x96', type: 'image/jpeg' },
+            { src: album.cover, sizes: '128x128', type: 'image/jpeg' },
+            { src: album.cover, sizes: '192x192', type: 'image/jpeg' },
+            { src: album.cover, sizes: '256x256', type: 'image/jpeg' },
+            { src: album.cover, sizes: '384x384', type: 'image/jpeg' },
+            { src: album.cover, sizes: '512x512', type: 'image/jpeg' },
+          ]
+        });
+
+        navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
+        navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+        navigator.mediaSession.setActionHandler('previoustrack', handlePrevious);
+        navigator.mediaSession.setActionHandler('nexttrack', handleNext);
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (details.fastSeek && audioRef.current && 'fastSeek' in audioRef.current) {
+            audioRef.current.fastSeek(details.seekTime);
+            return;
+          }
+          if (audioRef.current) {
+            audioRef.current.currentTime = details.seekTime;
+            setCurrent(details.seekTime);
+          }
+        });
+      }
+    }
+  }, [albumIdx, chapIdx, albums]);
+
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+    }
+  }, [isPlaying]);
 
   function cycleSpeed() {
     const i = speedOptions.indexOf(speed);
@@ -670,164 +793,214 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     // Compact collapsed / mini player shown when not expanded
   if (!expanded) {
     return (
-      <div className="w-full bg-white/5 dark:bg-black/40 backdrop-blur-md rounded-full px-4 py-2 shadow-sm animate-fade-in transition-all duration-300 ease-in-out relative">
+      <div className="w-full h-full flex items-center bg-black/95 md:bg-[#181818] md:border-t md:border-white/10 md:rounded-none rounded-md px-2 md:px-4 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.5)] md:shadow-none animate-fade-in transition-all duration-300 ease-in-out relative border border-white/10 mb-2 md:mb-0 mx-2 md:mx-0 max-w-[calc(100%-16px)] md:max-w-none">
         <audio ref={audioRef} preload="metadata" />
-        <div className="flex items-center gap-4">
-          <img src={album.cover} alt="cover" className="w-10 h-10 rounded-md object-cover" />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold truncate">{chap.title || album.title}</div>
-            <div className="text-xs text-white/60 truncate">{album.title} — {album.author}</div>
+        
+        {/* Left: Cover and Info */}
+        <div 
+           className="flex items-center gap-3 w-[70%] md:w-[30%] cursor-pointer md:cursor-default" 
+           onClick={() => { if(window.innerWidth < 768) setExpanded(true); }}
+        >
+          <img src={album.cover} alt="cover" className="w-10 h-10 md:w-14 md:h-14 rounded-md object-cover flex-shrink-0 shadow-md" />
+          <div className="flex-1 min-w-0 pr-2">
+            <div className="text-[13px] md:text-sm font-[600] text-white truncate hover:underline cursor-pointer">{chap.title || album.title}</div>
+            <div className="text-[11px] md:text-[12px] text-white/70 truncate hover:underline cursor-pointer">{album.title} — {album.artist}</div>
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setIsPlaying(p => !p)} aria-label={isPlaying ? 'Pause' : 'Play'} className="p-2 rounded-full bg-purple-600 text-white">
+          <button className="hidden md:block p-2 text-white/70 hover:text-white" aria-label="Like" onClick={toggleLike}>
+             {isLiked ? (
+               <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-[#1db954]"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
+             ) : (
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+             )}
+          </button>
+        </div>
+
+        {/* Center: Playback Controls (Desktop only) */}
+        <div className="flex-1 col justify-center items-center h-full max-w-[40%] hidden md:flex flex-col">
+          <div className="flex items-center gap-5 mb-1">
+            <button onClick={() => setShuffle(!shuffle)} className={shuffle ? "text-[#1db954]" : "text-white/70 hover:text-white"} aria-label="Shuffle">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+            </button>
+            <button onClick={handlePrevious} className="text-white/70 hover:text-white" aria-label="Previous">
+               <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M11.5 12L20 18V6l-8.5 6zM4 6h2v12H4V6z" /></svg>
+            </button>
+            <button onClick={() => setIsPlaying(p => !p)} className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-black hover:scale-105 transition" aria-label={isPlaying ? 'Pause' : 'Play'}>
               {isPlaying ? (
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                  <rect x="6" y="5" width="4" height="14" rx="1" />
-                  <rect x="14" y="5" width="4" height="14" rx="1" />
-                </svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                  <path d="M5 4v16l15-8L5 4z" />
-                </svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 ml-0.5"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
               )}
             </button>
-            <button onClick={() => setExpanded(true)} aria-label="Expand player" title="Open player" className="p-2 rounded-full border border-white/6">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 9.75V6.75A2.25 2.25 0 0 1 6.75 4.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 0-.75.75v3a.75.75 0 0 1-1.5 0zM19.5 14.25v3a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1 0-1.5h3a.75.75 0 0 0 .75-.75v-3a.75.75 0 0 1 1.5 0z" />
-              </svg>
+            <button onClick={handleNext} className="text-white/70 hover:text-white" aria-label="Next">
+               <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M12.5 12L4 6v12l8.5-6zM20 6h-2v12h2V6z" /></svg>
+            </button>
+            <button onClick={() => setRepeat(!repeat)} className={repeat ? "text-[#1db954]" : "text-white/70 hover:text-white"} aria-label="Repeat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
             </button>
           </div>
-        </div>
-        {/* island progress bar placed above the island (not overlapping metadata) */}
-        <div className="left-0 right-0 flex justify-center pointer-events-none z-30  ">
-          <div className="w-[calc(100%-1.5rem)] max-w-[calc(100%-1.5rem)] pointer-events-auto ">
+          {/* Progress bar inside controls (desktop) */}
+          <div className="w-full flex items-center gap-2 max-w-md mt-1">
+            <span className="text-[11px] text-white/70 min-w-[32px] text-right font-medium">{formatTime(current)}</span>
             <div
-              role="slider"
-              aria-label="Playback position"
-              aria-valuemin={0}
-              aria-valuemax={Math.floor(duration || 0)}
-              aria-valuenow={Math.floor(current || 0)}
-              tabIndex={0}
-              onKeyDown={onProgressKeyDown}
-              onClick={onProgressClick}
-              onPointerDown={startPointerDrag}
-              className="relative w-full cursor-pointer"
-            
+              role="slider" aria-valuenow={Math.floor(current || 0)} aria-valuemin={0} aria-valuemax={Math.floor(duration || 0)} aria-label="Playback position" tabIndex={0} onKeyDown={onProgressKeyDown}
+              className="relative flex-1 h-1.5 bg-white/20 rounded-full cursor-pointer group"
+              onClick={onProgressClick} onPointerDown={startPointerDrag}
             >
-              <div className="h-[2px] w-full bg-white/10 rounded-3xl overflow-hidden relative mt-1">
-                {/* single gradient fill element with rounded corners; inner track clips the gradient so ends are pill-shaped */}
-                <div className="absolute left-0 top-0 h-2 bg-gradient-to-r from-purple-600 via-purple-400 to-pink-500 rounded-full" style={{ width: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%` }} />
+              <div className="h-full bg-white group-hover:bg-[#1db954] rounded-full relative" style={{ width: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%` }}>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow"></div>
               </div>
-              {/* small thumb and bap for the island - placed outside the clipped track so it renders as a full circle */}
-              <div className="absolute top-1/2 -translate-y-1/2 z-20" style={{ left: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%`, transform: 'translate(-50%, -50%)' }}>
-                <div className="w-3 h-3 rounded-full bg-purple-600 shadow-[0_6px_12px_rgba(139,92,246,0.24)]" />
-              </div>
-              <div className="absolute left-[calc(var(--pos,0)%)] -top-3 translate-x-[-50%]" style={{ left: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%` }} aria-hidden>
-                <div className="w-8 h-2 rounded-full bg-white/6 blur-sm opacity-80" />
-              </div>
-              <div aria-hidden className="pointer-events-none absolute left-0 top-0 h-full w-8" style={{ background: 'linear-gradient(to right, rgba(255,255,255,0.14), transparent)' }} />
-              <div aria-hidden className="pointer-events-none absolute right-0 top-0 h-full w-8" style={{ background: 'linear-gradient(to left, rgba(255,255,255,0.14), transparent)' }} />
             </div>
+            <span className="text-[11px] text-white/70 min-w-[32px] text-left font-medium">{formatTime(duration)}</span>
           </div>
+        </div>
+
+        {/* Right: Extra Controls (Desktop only) */}
+        <div className="hidden md:flex flex-1 justify-end items-center gap-4 w-[30%] pr-2">
+          <button className="text-white/70 hover:text-white" title={`Playback speed ${speed}x`} onClick={cycleSpeed}>
+             <span className="text-xs font-bold border border-white/50 rounded px-1 py-0.5 opacity-80">{speed}x</span>
+          </button>
+          <button onClick={downloadCurrent} className="text-white/70 hover:text-white" aria-label="Download">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          </button>
+          <div className="flex items-center gap-2 w-24">
+             <button onClick={() => { const v = volume > 0 ? 0 : 1; setVolume(v); if(audioRef.current) audioRef.current.volume = v; }} className="text-white/70 hover:text-white" aria-label={volume === 0 ? "Unmute" : "Mute"}>
+                {volume === 0 ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                )}
+             </button>
+             <div 
+                className="relative flex-1 h-1.5 bg-white/20 rounded-full cursor-pointer group"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                  setVolume(p);
+                  if (audioRef.current) audioRef.current.volume = p;
+                }}
+             >
+               <div className="h-full bg-white group-hover:bg-[#1db954] rounded-full relative" style={{ width: `${volume * 100}%` }}>
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow"></div>
+               </div>
+             </div>
+          </div>
+        </div>
+
+        {/* Mobile controls (Only shown on small screens) */}
+        <div className="flex md:hidden items-center gap-2 justify-end flex-1 pr-1">
+            <button className="text-white/70 p-2" aria-label="Devices">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+            </button>
+            <button onClick={() => setIsPlaying(p => !p)} aria-label={isPlaying ? 'Pause' : 'Play'} className="p-2 text-white">
+              {isPlaying ? (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+              )}
+            </button>
+        </div>
+
+        {/* Mobile progress bar along bottom edge */}
+        <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-white/20 rounded-full overflow-hidden md:hidden">
+            <div className="h-full bg-white rounded-full" style={{ width: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%` }}></div>
         </div>
       </div>
     );
   }
 
+  // Expanded Mobile Full Screen Player
   return (
-    // fullscreen overlay — cover the entire viewport with no margin
-    <div className="fixed inset-0 z-[9999] bg-gradient-to-b from-black/80 via-black/60 to-black/75 backdrop-blur-sm text-white p-0 animate-fade-in overflow-auto">
+    <div className="fixed inset-0 z-[9999] md:hidden bg-gradient-to-b from-gray-700 via-gray-900 to-black text-white p-0 animate-fade-in overflow-hidden flex flex-col">
       <audio ref={audioRef} preload="metadata" />
-      <div className="flex flex-col items-center relative max-w-3xl mx-auto w-full px-6 py-8">
-        <div className="absolute left-0 right-0 top-0 z-10 flex justify-between px-6 pt-6">
-          <button onClick={() => setExpanded(false)} aria-label="Minimize" title="Minimize" >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-              </svg>
-
-          </button>
-          <button onClick={() => handleShare()} aria-label="Share" title="Share" >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
-            </svg>
-
-          </button>
+      
+      {/* Top Bar */}
+      <div className="flex items-center justify-between px-4 pt-6 pb-2 mb-2 w-full mt-2">
+        <button onClick={() => setExpanded(false)} aria-label="Minimize" className="p-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+        <div className="flex flex-col items-center">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-white/70">Playing from Album</span>
+            <span className="text-[13px] font-bold truncate max-w-[200px]">{album.title}</span>
         </div>
-
-        {/* simplified: only top-left minimize and top-right share (no duplicate collapse button) */}
-        <img src={album.cover} className="w-full h-[48vh] rounded-3xl mb-4 object-cover transform p-10 pt-14  transition-transform duration-500" style={{ transform: isPlaying ? 'scale(1.02)' : 'scale(1)' }} />
-        <div className="text-center mb-2">
-          <div className="font-semibold text-lg">{chap.title}</div>
-          <div className="text-sm text-white/70">{album.title} — {album.author}</div>
-        </div>
-
-        {/* fullscreen progress bar (top) — match island gradient, large thumb */}
-        <div className="w-full mt-3">
-          <div
-            role="slider"
-            aria-label="Playback position"
-            aria-valuemin={0}
-            aria-valuemax={Math.floor(duration || 0)}
-            aria-valuenow={Math.floor(current || 0)}
-            tabIndex={0}
-            onKeyDown={onProgressKeyDown}
-            onClick={onProgressClick}
-            onPointerDown={startPointerDrag}
-            className="relative w-full cursor-pointer"
-          >
-            <div className="h-3 w-full bg-white/10 rounded-full overflow-hidden relative">
-              {/* one rounded fill only; inner track clips the gradient so we get a smooth pill-shaped end */}
-              <div className="absolute left-0 top-0 h-3 bg-gradient-to-r from-purple-600 via-purple-400 to-pink-500 rounded-full" style={{ width: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%` }} />
-            </div>
-            {/* thumb sits outside the clipped track so it renders fully as a circular overlay */}
-            <div className="absolute top-1/2 -translate-y-1/2 z-20" style={{ left: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%`, transform: 'translate(-50%, -50%)' }}>
-              <div className="w-5 h-5 rounded-full bg-purple-600 ring-4 ring-purple-700/30 shadow-[0_8px_28px_rgba(139,92,246,0.42)]" />
-            </div>
-          </div>
-          <div className="w-full flex justify-between text-xs mt-2 text-white/70"><span>{formatTime(current)}</span><span>{formatTime(duration)}</span></div>
-        </div>
-
-        <div className="flex items-center gap-6 mt-4">
-          <button onClick={() => { if (chapIdx > 0) setChapIdx(ci => ci - 1); }} className="big-btn" aria-label="Previous">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-              <path d="M11.5 12L20 18V6l-8.5 6zM4 6h2v12H4V6z" />
-            </svg>
-          </button>
-
-          <button onClick={() => setIsPlaying(p => !p)} className="p-5 bg-purple-600 text-white rounded-full" aria-label={isPlaying ? 'Pause' : 'Play'}>
-            {isPlaying ? (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                <rect x="6" y="5" width="4" height="14" rx="1" />
-                <rect x="14" y="5" width="4" height="14" rx="1" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                <path d="M5 4v16l15-8L5 4z" />
-              </svg>
-            )}
-          </button>
-
-          <button onClick={() => { if (chapIdx < album.chapters.length - 1) setChapIdx(ci => ci + 1); }} className="big-btn" aria-label="Next">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-              <path d="M12.5 12L4 6v12l8.5-6zM20 6h-2v12h2V6z" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex   gap-3 mt-4 w-full justify-between ">
-          <button onClick={cycleSpeed} className={`big-btn text-sm`} aria-label={`Playback speed ${speed}x`} title={`Playback speed ${speed}x — click to change`}>
-            {speed}x
-          </button>
-
-          <button onClick={downloadCurrent} className="big-btn" aria-label="Download audio" title="Download audio">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l4-4m-4 4-4-4M21 21H3" />
-            </svg>
-          </button>
-        </div>
-
+        <button className="p-2" aria-label="More options">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 mt-0.5"><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>
+        </button>
       </div>
-      {/* bottom progress bar removed (not needed) */}
+
+      <div className="flex-1 flex flex-col px-6">
+          {/* Cover Art */}
+          <div className="w-full flex-1 max-h-[40vh] flex items-center justify-center mb-10 mt-6 md:mt-10 mx-auto">
+             <img src={album.cover} className="w-full h-full max-h-[350px] max-w-[350px] object-cover rounded-lg shadow-[0_12px_40px_rgba(0,0,0,0.5)] bg-black" />
+          </div>
+
+          {/* Song Info */}
+          <div className="flex justify-between items-end mb-6">
+             <div className="flex flex-col flex-1 pr-4 min-w-0">
+                <span className="text-[22px] font-bold truncate mb-1">{chap.title}</span>
+                <span className="text-base text-white/70 truncate">{album.artist}</span>
+             </div>
+             <button onClick={toggleLike} className="p-2 text-white/70 hover:text-[#1db954]" aria-label="Like">
+               {isLiked ? (
+                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-[#1db954]"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
+               ) : (
+                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+               )}
+             </button>
+          </div>
+
+          {/* Progress Slider */}
+          <div className="w-full mb-8">
+              <div
+                role="slider" aria-valuenow={Math.floor(current || 0)} aria-valuemin={0} aria-valuemax={Math.floor(duration || 0)} aria-label="Playback position" tabIndex={0} onKeyDown={onProgressKeyDown}
+                className="relative h-1.5 w-full bg-white/20 rounded-full cursor-pointer group mb-3"
+                onClick={onProgressClick} onPointerDown={startPointerDrag}
+              >
+                 <div className="h-full bg-white rounded-full relative" style={{ width: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%` }}>
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 bg-white rounded-full shadow"></div>
+                 </div>
+              </div>
+              <div className="flex justify-between text-[11px] text-white/70 font-semibold opacity-90">
+                 <span>{formatTime(current)}</span>
+                 <span>{formatTime(duration)}</span>
+              </div>
+          </div>
+
+          {/* Playback Controls */}
+          <div className="flex items-center justify-between mb-8 max-w-[320px] mx-auto w-full">
+            <button onClick={() => setShuffle(!shuffle)} className={shuffle ? "text-[#1db954]" : "text-white/70"} aria-label="Shuffle">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+            </button>
+            <button onClick={handlePrevious} className="text-white" aria-label="Previous">
+               <svg viewBox="0 0 24 24" fill="currentColor" className="w-9 h-9"><path d="M11.5 12L20 18V6l-8.5 6zM4 6h2v12H4V6z" /></svg>
+            </button>
+            <button onClick={() => setIsPlaying(p => !p)} className="flex items-center justify-center w-[64px] h-[64px] rounded-full bg-white text-black hover:scale-105 transition shadow-lg" aria-label={isPlaying ? 'Pause' : 'Play'}>
+              {isPlaying ? (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7"><rect x="6" y="5" width="4" height="14" rx="1.5" /><rect x="14" y="5" width="4" height="14" rx="1.5" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 ml-1.5"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+              )}
+            </button>
+            <button onClick={handleNext} className="text-white" aria-label="Next">
+               <svg viewBox="0 0 24 24" fill="currentColor" className="w-9 h-9"><path d="M12.5 12L4 6v12l8.5-6zM20 6h-2v12h2V6z" /></svg>
+            </button>
+            <button onClick={() => setRepeat(!repeat)} className={repeat ? "text-[#1db954]" : "text-white/70"} aria-label="Repeat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+            </button>
+          </div>
+
+          {/* Bottom Bar: Devices and Share/Speed */}
+          <div className="flex items-center justify-between pb-8 mt-auto text-white/70">
+             <button className="hover:text-white" title="Devices" aria-label="Devices">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+             </button>
+             <div className="flex items-center gap-5">
+                 <button onClick={cycleSpeed} className="min-w-[32px] text-center text-xs font-bold border border-white/50 rounded px-1.5 py-0.5 hover:text-white hover:border-white transition">{speed}x</button>
+                 <button onClick={downloadCurrent} className="hover:text-white" aria-label="Download">
+                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                 </button>
+             </div>
+          </div>
+      </div>
     </div>
   );
 }

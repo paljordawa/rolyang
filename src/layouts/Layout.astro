@@ -177,7 +177,7 @@ if (document.readyState === 'loading') {
 console.log('Script initialization complete, window.playerPlay:', typeof window.playerPlay);`}
     </script>
   </head>
-  <body class="bg-slate-600 text-white min-h-screen">
+  <body class="bg-[#000000] text-white h-[100dvh] overflow-hidden flex flex-col font-sans select-none">
     <!-- Ensure playerPlay is available immediately - runs first -->
     <script is:inline>
       window.playerPlay = window.playerPlay || function (payload) {
@@ -190,98 +190,198 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
       };
       console.log('playerPlay initialized, type:', typeof window.playerPlay);
     </script>
-    <div class="min-h-screen flex flex-col">
-      <header class="fixed top-0 left-0 right-0 z-40">
-        <div class="p-4 h-16 flex items-center justify-between max-w-4xl mx-auto w-full d">
-          { backHref ? (
-            <a href={backHref} class="p-2 rounded-md  inline-flex items-center gap-2" aria-label="Back">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-              <span class="sr-only">Back</span>
-            </a>
-            
-          ) : (
-            <a href="/" class="flex items-center font-semibold">
-              
-              <svg class="w-10 h-10 pr-2" viewBox="0 0 96 94" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;"><path d="M42.2,72.733c-1.381,-1.66 -2.615,-3.467 -4.143,-4.951c-4.892,-4.745 -10.519,-8.359 -17.116,-10.299c-0.529,-0.162 -0.676,-0.118 -0.676,0.485c0.029,3.908 0.015,7.831 0.015,11.738c0,3.717 -0.015,7.449 0,11.166c0,1.866 0.485,3.599 1.499,5.171c3.129,4.833 8.888,6.053 13.737,4.319c4.114,-1.469 6.787,-5.083 6.846,-9.138c0.029,-2.6 0,-5.215 0,-7.831c0,-0.235 0,-0.455 -0.162,-0.661Z" style="fill:#f4f1fc;fill-rule:nonzero;"/><path d="M88.273,73.438c-1.072,-1.601 -2.292,-3.085 -3.452,-4.598c-2.953,-3.849 -5.921,-7.698 -8.888,-11.547c-0.147,-0.191 -0.235,-0.411 -0.602,-0.353c-1.925,0.382 -3.864,0.72 -5.788,1.058c-1.175,0.088 -2.351,0.191 -3.526,0.294c-0.25,-0.103 -0.514,-0.044 -0.764,-0.059l-0.073,0c-1.087,-0.044 -2.189,0 -3.276,-0.015c-0.147,0 -0.309,0 -0.455,-0.015c-3.203,-0.338 -6.347,-1.014 -9.52,-1.543c-1.19,-0.206 -2.38,-0.147 -3.555,0.382c0.162,0.22 0.279,0.397 0.397,0.558c2.439,3.173 4.863,6.361 7.302,9.535c4.29,5.597 8.58,11.195 12.87,16.778c0.69,0.926 1.381,1.866 2.086,2.791c0.558,0.735 1.219,1.396 1.969,1.939c2.571,1.881 5.451,2.483 8.609,2.116c4.025,-0.455 7.478,-3.291 8.565,-7.199c1.028,-3.658 0.162,-7.023 -1.895,-10.122Z" style="fill:#f4f1fc;fill-rule:nonzero;"/><path d="M20.971,35.182c4.775,1.454 8.712,4.114 11.68,8.154c0.397,0.544 0.793,1.058 1.293,1.719c0.382,-3.056 1.601,-5.509 3.834,-7.404c1.249,-0.735 2.498,-1.44 3.923,-1.734c0.529,-0.103 0.661,-0.323 0.661,-0.852c-0.015,-4.525 0,-9.05 -0.029,-13.56c0,-0.661 0.191,-0.779 0.793,-0.764c2.586,0.029 5.157,0 7.742,-0.015c1.205,0.015 2.409,0.029 3.629,0.044c1.19,0.015 2.365,-0.029 3.541,0.132c2.233,0.294 4.114,1.205 5.656,2.894c1.234,1.366 1.675,2.982 1.675,4.731c0,2.571 -0.073,5.157 -0.132,7.728c0,0.382 0.015,0.661 0.485,0.661c2.453,0.015 4.922,0 7.36,-0.264c1.499,0 2.968,-0.235 4.437,-0.485c3.217,-0.529 6.332,-1.381 9.212,-2.968c0.47,-0.25 0.749,-0.573 0.881,-1.102c0.764,-3.071 0.514,-6.141 -0.118,-9.167c-1.528,-7.493 -5.921,-12.84 -12.649,-16.293c-6.508,-3.335 -13.516,-4.158 -20.7,-3.967l0,0.015c-3.115,-0.015 -6.244,-0.029 -9.358,-0.029c-2.409,0 -4.819,0.015 -7.228,0.029l-0.073,0c-2.409,0 -4.833,-0.103 -7.243,0.015c-3.247,0.176 -5.862,1.675 -7.875,4.216c-1.469,1.719 -2.101,3.746 -2.101,5.965c-0.015,7.111 0,14.221 -0.015,21.332c-0,0.558 0.162,0.808 0.72,0.97Z" style="fill:#f4f1fc;fill-rule:nonzero;"/><path d="M61.946,54.148c3.438,0.162 6.861,-0.059 10.255,-0.661c1.601,-0.279 3.203,-0.544 4.687,-1.249c1.895,-0.896 3.291,-2.336 4.481,-4.011c0.132,-0.162 0.264,-0.323 0.382,-0.5c1.763,-2.762 2.88,-5.803 3.732,-8.932c0.176,-0.617 0.426,-1.219 0.426,-1.954c-1.792,1.102 -3.643,1.778 -5.568,2.307c-3.482,0.955 -7.067,1.308 -10.666,1.499c-2.204,0.103 -4.407,0.088 -6.596,-0.015c-2.116,-0.103 -4.216,-0.323 -6.332,-0.529c-0.044,-0.015 -0.073,-0.059 -0.118,-0.073c-2.571,-0.294 -5.142,-0.646 -7.684,-1.161c-1.807,-0.367 -3.555,-0.206 -5.289,0.353c-0.735,0.073 -1.396,0.411 -2.042,0.735c-3.717,1.866 -5.583,5.098 -6.523,8.991c-0.353,0.881 -0.353,1.851 -0.676,2.85c-1.131,-1.454 -2.16,-2.894 -3.276,-4.246c-1.396,-1.69 -2.88,-3.291 -4.598,-4.657c-1.381,-1.219 -2.865,-2.292 -4.569,-3.026c-0.823,-0.323 -1.645,-0.617 -2.453,-0.955c-2.116,-0.881 -4.29,-0.94 -6.523,-0.646l0.073,0l-0.073,0c-1.587,0.103 -3.041,0.646 -4.496,1.219c-0.426,0.162 -0.69,0.441 -0.896,0.837c-1.366,2.777 -2.747,5.539 -4.114,8.315c-0.602,1.219 -1.19,2.439 -1.836,3.776c1.263,-0.162 2.395,-0.309 3.526,-0.455c0.088,0 0.191,0.029 0.279,0.015c3.864,-0.25 7.684,-0.044 11.474,0.764c1.102,0.235 2.189,0.514 3.291,0.764l0.029,0c0,0 -0.015,0 -0.029,0.015c2.835,0.867 5.583,1.925 8.139,3.438c3.041,1.807 5.921,3.834 8.55,6.2c1.69,1.792 3.129,3.805 4.833,5.744c0.118,-1.704 0.147,-3.276 0.132,-4.863c0,-0.323 0.015,-0.646 0.015,-0.97l0,-0.029c0.118,-0.22 0.059,-0.441 0.073,-0.676c0.132,-2.483 -0.073,-4.966 0.353,-7.434c0.279,-0.793 0.926,-1.219 1.616,-1.616c0.837,-0.47 1.778,-0.573 2.689,-0.793c2.909,-0.176 5.759,0.279 8.609,0.764c2.248,0.338 4.452,0.764 6.714,0.867Z" style="fill:#f4f1fc;fill-rule:nonzero;"/></svg>
-              Rolyang
-              
-              </a>
-          )}
-          <nav class="hidden md:flex gap-4 items-center">
-            <a href="/" class="opacity-90 hover:opacity-100">Home</a>
-            <a href="/search" class="opacity-90 hover:opacity-100">Search</a>
-            <!-- <a href="/library" class="opacity-90 hover:opacity-100">Library</a> -->
-          </nav>
-          <button
-            data-share-button
-            class="p-2 rounded-md inline-flex items-center ml-3"
-            aria-label="Share"
-            title="Share"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
-            </svg>
+    
+    <div class="flex-1 flex overflow-hidden p-2 gap-2 h-full md:h-[calc(100svh-95px)] relative">
+      <!-- Left Sidebar (Desktop only) -->
+      <aside class="hidden md:flex flex-col w-64 lg:w-80 bg-[#121212] rounded-lg overflow-hidden flex-shrink-0">
+        <!-- Home / Search Nav -->
+        <nav class="p-5 space-y-4">
+          <a href="/" class="flex items-center gap-5 text-white/70 hover:text-white transition-colors duration-200">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12.5 3.247a1 1 0 00-1 0L4 7.577V20h4.5v-6a1 1 0 011-1h5a1 1 0 011 1v6H20V7.577l-7.5-4.33z"/></svg>
+            <span class="font-bold text-sm">Home</span>
+          </a>
+          <a href="/search" class="flex items-center gap-5 text-white/70 hover:text-white transition-colors duration-200">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <span class="font-bold text-sm">Search</span>
+          </a>
+        </nav>
 
-          </button>
-        </div>
-      </header>
-      <main class="flex-1 w-full max-w-4xl mx-auto  px-4 pt-16">
-        <slot />
-      </main>
-      <!-- Listen for the Player fullscreen/expanded state so we can hide page titles -->
-      <script>
-        (function(){
-          function update(expanded){
-            document.querySelectorAll('.page-title').forEach(function(el){
-              if (expanded) el.classList.add('hidden'); else el.classList.remove('hidden');
-            });
-            // hide main header and mobile footer while player is fully expanded
-            var hdr = document.querySelector('header'); if (hdr) { if (expanded) hdr.classList.add('hidden'); else hdr.classList.remove('hidden'); }
-            var ftr = document.querySelector('footer'); if (ftr) { if (expanded) ftr.classList.add('hidden'); else ftr.classList.remove('hidden'); }
-          }
-          try { update(localStorage.getItem('player:expanded') === 'true'); } catch(e){}
-          // @ts-ignore -- custom event with detail object
-          window.addEventListener('player:expanded', function(ev){ try { update(ev && ev.detail && ev.detail.expanded === true); } catch(e){} });
-        })();
-      </script>
-     
-
-      <!-- Persistent bottom player island - always mounted so audio keeps playing across navigation -->
-      <div
-        class="fixed left-0 right-0 bottom-6 z-50 pointer-events-none md:bottom-8 transition-all duration-300"
-        data-player-shell
-        data-hidden={hidePlayerUntilPlaying ? 'true' : 'false'}
-      >
-        <div class="max-w-4xl mx-auto px-4">
-          <div class="pointer-events-auto">
-            <!-- hydrate the Player island on the client when it loads -->
-            <Player client:load books={(albums as any)} startBookId={playerStart?.startBookId} startChapIndex={playerStart?.startChapIndex} />
+        <!-- Library Section -->
+        <div class="flex-1 mt-2 bg-[#121212] rounded-lg p-3 flex flex-col overflow-hidden">
+          <div class="flex items-center justify-between text-white/70 hover:text-white transition-colors duration-200 mb-4 px-2 cursor-pointer group">
+            <div class="flex items-center gap-3">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 016.5 2H20v20H6.5a2.5 2.5 0 010-5H20"/></svg>
+              <span class="font-bold text-sm">Your Library</span>
+            </div>
+            <div class="flex gap-2">
+              <span class="p-1 hover:bg-white/10 rounded-full transition"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>
+              <span class="p-1 hover:bg-white/10 rounded-full transition"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            </div>
+          </div>
+          
+          <div class="flex gap-2 px-2 pb-4">
+             <span class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition cursor-pointer">Playlists</span>
+             <span class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition cursor-pointer">Albums</span>
+             <span class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition cursor-pointer">Artists</span>
+          </div>
+          
+          <!-- Playlists scroll container -->
+          <div class="overflow-y-auto flex-1 px-1 space-y-1">
+            {albums.map((album) => (
+              <div 
+                class="flex items-center gap-3 group cursor-pointer hover:bg-white/10 p-2 rounded-md transition-colors" 
+                data-player-album={album.id} 
+                data-player-chap="0" 
+                data-player-expand="false"
+              >
+                <img src={album.cover} alt={album.title} class="w-12 h-12 rounded object-cover shadow-[0_4px_10px_rgba(0,0,0,0.3)]" />
+                <div class="flex-1 min-w-0">
+                  <div class="text-base font-medium truncate text-white">{album.title}</div>
+                  <div class="text-[13px] text-white/70 truncate mt-0.5">Album • {album.author}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
-      {hidePlayerUntilPlaying ? (
-        <>
-          <style>
-            {`[data-player-shell][data-hidden="true"]{opacity:0;pointer-events:none;transform:translateY(24px);}`}
-          </style>
-          <script>
-            {`(() => {
-  function reveal() {
-    const shell = document.querySelector('[data-player-shell]');
-    if (!shell) return;
-    if (shell.dataset.hidden !== 'false') shell.dataset.hidden = 'false';
-  }
-  window.addEventListener('player:now-playing', (ev) => {
-    if (ev && ev.detail && ev.detail.isPlaying !== false) reveal();
-  });
-  window.addEventListener('player:play', () => reveal());
-  try {
-    if (window.__playerNowPlaying && window.__playerNowPlaying.isPlaying !== false) reveal();
-  } catch (e) {}
-})();`}
-          </script>
-        </>
-      ) : null}
+      </aside>
+
+      <!-- Main Content Area -->
+      <main id="main-content" class="flex-1 bg-[#121212] rounded-lg overflow-y-auto overflow-x-hidden relative">
+         <!-- Top sticky header -->
+         <header id="main-header" class="sticky top-0 z-40 bg-transparent flex items-center justify-between px-4 md:px-6 py-4 transition-all duration-300">
+            <div class="flex gap-2">
+               <a href={backHref || "/"} class="w-8 h-8 rounded-full bg-black/70 flex items-center justify-center text-white/70 hover:text-white cursor-pointer hover:bg-black/90 transition">
+                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+               </a>
+               <button class="w-8 h-8 rounded-full bg-black/70 hidden md:flex items-center justify-center text-white/70 hover:text-white cursor-not-allowed transition">
+                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+               </button>
+            </div>
+            
+            <div class="flex items-center gap-3 md:gap-4">
+               <button class="hidden md:block rounded-full bg-white text-black font-bold text-[13px] px-4 py-1.5 hover:scale-105 transition">Explore Premium</button>
+               <button class="hidden md:flex rounded-full bg-black/70 text-white font-bold text-[13px] px-4 py-1.5 hover:scale-105 transition items-center gap-1">
+                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                 Install App
+               </button>
+               <button data-share-button class="w-8 h-8 rounded-full bg-black/70 hover:scale-105 hover:bg-black/90 transition text-white/70 hover:text-white flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+                  </svg>
+               </button>
+               <div class="w-8 h-8 rounded-full bg-pink-500 hover:scale-105 transition flex items-center justify-center font-bold text-black text-sm cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.3)]">D</div>
+            </div>
+         </header>
+         
+         <div class="pb-24 pt-2 min-h-full px-4 md:px-6"> 
+           <slot />
+         </div>
+      </main>
     </div>
+
+    <script>
+      // Header scroll background effect replacing bg-transparent with dark background
+      document.addEventListener('DOMContentLoaded', () => {
+        const mainContent = document.getElementById('main-content');
+        const mainHeader = document.getElementById('main-header');
+        if(mainContent && mainHeader) {
+          mainContent.addEventListener('scroll', () => {
+            if (mainContent.scrollTop > 40) {
+              mainHeader.style.backgroundColor = 'rgba(18, 18, 18, 0.95)';
+              mainHeader.style.backdropFilter = 'blur(10px)';
+              mainHeader.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+            } else {
+              mainHeader.style.backgroundColor = 'transparent';
+              mainHeader.style.backdropFilter = 'none';
+              mainHeader.style.boxShadow = 'none';
+            }
+          });
+        }
+      });
+    </script>
+    <script>
+      (function(){
+        function update(expanded){
+          // We don't hide titles anymore unless required contextually by React component.
+        }
+        try { update(localStorage.getItem('player:expanded') === 'true'); } catch(e){}
+        // @ts-ignore
+        window.addEventListener('player:expanded', function(ev){ try { update(ev && ev.detail && ev.detail.expanded === true); } catch(e){} });
+      })();
+    </script>
+   
+    <!-- Bottom Player Island -->
+    <div
+      class="fixed md:absolute left-0 right-0 bottom-[60px] md:bottom-0 z-50 md:h-[95px] md:bg-black transition-all duration-300 player-wrapper"
+      data-player-shell
+      data-hidden={hidePlayerUntilPlaying ? 'true' : 'false'}
+    >
+      <!-- hydrate the Player island on the client when it loads -->
+      <Player client:load books={(albums as any)} startBookId={playerStart?.startBookId} startChapIndex={playerStart?.startChapIndex} />
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-[60] flex items-center justify-around bg-black py-2 border-t border-white/10" style="padding-bottom: env(safe-area-inset-bottom, 12px); box-shadow: 0 -4px 12px rgba(0,0,0,0.4);" data-bottom-nav>
+        <a href="/" class="flex flex-col items-center gap-1 text-white">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12.5 3.247a1 1 0 00-1 0L4 7.577V20h4.5v-6a1 1 0 011-1h5a1 1 0 011 1v6H20V7.577l-7.5-4.33z"/></svg>
+          <span class="text-[10px] opacity-90">Home</span>
+        </a>
+        <a href="/search" class="flex flex-col items-center gap-1 text-white/50 hover:text-white transition">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <span class="text-[10px]">Search</span>
+        </a>
+        <a href="/library" class="flex flex-col items-center gap-1 text-white/50 hover:text-white transition">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 016.5 2H20v20H6.5a2.5 2.5 0 010-5H20"/></svg>
+          <span class="text-[10px]">Your Library</span>
+        </a>
+        <a href="/premium" class="flex flex-col items-center gap-1 text-white/50 hover:text-white transition">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          <span class="text-[10px]">Premium</span>
+        </a>
+    </nav>
+    <script>
+      (function(){
+        function update(expanded){
+           var ftr = document.querySelector('[data-bottom-nav]') as HTMLElement; 
+           var shell = document.querySelector('[data-player-shell]') as HTMLElement;
+           if (ftr) { 
+             if (expanded) {
+               ftr.style.transform = 'translateY(100%)';
+               if(window.innerWidth < 768 && shell) shell.style.bottom = '0px';
+             } else {
+               ftr.style.transform = 'translateY(0)';
+               if(window.innerWidth < 768 && shell) shell.style.bottom = '60px';
+             }
+           }
+        }
+        try { update(localStorage.getItem('player:expanded') === 'true'); } catch(e){}
+        // @ts-ignore
+        window.addEventListener('player:expanded', function(ev){ try { update(ev && ev.detail && ev.detail.expanded === true); } catch(e){} });
+      })();
+    </script>
+
+    {hidePlayerUntilPlaying ? (
+      <>
+        <style>
+          {`[data-player-shell][data-hidden="true"]{opacity:0;pointer-events:none;transform:translateY(24px);}`}
+        </style>
+        <script>
+          {`(() => {
+function reveal() {
+  const shell = document.querySelector('[data-player-shell]');
+  if (!shell) return;
+  if (shell.dataset.hidden !== 'false') shell.dataset.hidden = 'false';
+}
+window.addEventListener('player:now-playing', (ev) => {
+  if (ev && ev.detail && ev.detail.isPlaying !== false) reveal();
+});
+window.addEventListener('player:play', () => reveal());
+try {
+  if (window.__playerNowPlaying && window.__playerNowPlaying.isPlaying !== false) reveal();
+} catch (e) {}
+})();`}
+        </script>
+      </>
+    ) : null}
   </body>
 </html>
