@@ -8,7 +8,7 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/node": "^8.3.4",
+    "@astrojs/netlify": "^7.0.6",
     "@libsql/client": "^0.17.2",
     "@nanostores/react": "^1.1.0",
     "astro": "^4.0.0",
