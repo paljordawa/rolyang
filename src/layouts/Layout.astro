@@ -37,6 +37,35 @@ const cleanPlaylists = playlists.map(p => ({
   id: p.id?.toString()
 }));
 
+// Build playable "books" from playlists
+const playlistsWithTracks = await Promise.all(cleanPlaylists.map(async (p) => {
+  const tracksRes = await client.execute({
+    sql: `
+      SELECT t.*, a.title as album_title, a.artist as album_artist, a.cover as album_cover
+      FROM playlist_tracks pt
+      JOIN tracks t ON pt.track_id = t.id
+      JOIN albums a ON t.album_id = a.id
+      WHERE pt.playlist_id = ?
+      ORDER BY pt.added_at ASC
+    `,
+    args: [p.id]
+  });
+  return {
+    ...p,
+    id: `playlist-${p.id}`,
+    artist: 'User Playlist',
+    // Fallback cover if playlist has no cover
+    cover: p.cover !== 'gradient' ? p.cover : (tracksRes.rows[0]?.album_cover || '/social.jpg'),
+    chapters: tracksRes.rows.map((r: any) => ({
+      ...r,
+      id: r.id?.toString(),
+      album_id: r.album_id?.toString()
+    }))
+  };
+}));
+
+const allBooksForPlayer = [...albums, ...playlistsWithTracks];
+
 const siteTitle = 'Rolyang Music Player';
 const siteDescription = 'Listen to curated music from the Rolyang collection.';
 
@@ -138,7 +167,14 @@ function setupPlayerClickHandler() {
   document.addEventListener('click', function(ev) {
     try {
       console.log('Click detected, target:', ev.target, 'tagName:', ev.target.tagName);
-      let el = ev.target;
+      
+      let targetAsElement = ev.target as HTMLElement;
+      // Skip player play logic if clicking on internal action buttons / links (Heart, Plus, Three Dots, Artist name)
+      if (targetAsElement && targetAsElement.closest && targetAsElement.closest('button:not([data-player-book]):not([data-player-album]), .js-like-btn, .js-add-to-playlist-btn, .js-track-more-btn, a:not([data-player-title])')) {
+         return;
+      }
+      
+      let el = ev.target as HTMLElement;
       // Check if clicked element or any parent has the data attribute
       while (el && el !== document.body && el !== document) {
         if (el.nodeType === 1 && el.hasAttribute) {
@@ -169,7 +205,7 @@ function setupPlayerClickHandler() {
     } catch (e) {
       console.error('Player click handler error:', e);
     }
-  }, true); // Use capture phase to run before other handlers
+  }); // Uses standard bubble phase
 }
 
 // Setup handlers when DOM is ready
@@ -692,9 +728,10 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
       class="fixed md:absolute left-0 right-0 bottom-[60px] md:bottom-0 z-50 md:h-[95px] md:bg-black transition-all duration-300 player-wrapper"
       data-player-shell
       data-hidden={hidePlayerUntilPlaying ? 'true' : 'false'}
+      transition:persist="player-shell"
     >
       <!-- hydrate the Player island on the client when it loads -->
-      <Player client:load books={(albums as any)} startBookId={cleanPlayerStart?.startBookId} startChapIndex={cleanPlayerStart?.startChapIndex} />
+      <Player client:load books={(allBooksForPlayer as any)} startBookId={cleanPlayerStart?.startBookId} startChapIndex={cleanPlayerStart?.startChapIndex} />
     </div>
 
     <!-- Mobile Bottom Navigation -->
@@ -843,7 +880,7 @@ try {
         if (!btn) return;
         
         const trackId = btn.getAttribute('data-track-id');
-        if (trackId) (window as any).createPlaylist(trackId);
+        if (trackId) showPlaylistSelector(trackId, btn);
       });
 
       function showPlaylistSelector(trackId: string, anchor: HTMLElement) {
@@ -1045,5 +1082,62 @@ try {
         </div>
       </div>
     </div>
+    <script>
+      // Highlight active track in TrackRows continuously synced via Nanostores
+      document.addEventListener('DOMContentLoaded', () => {
+        const checkStore = setInterval(() => {
+          // Wait for the React component/store to attach to window
+          if (window.__nanostores_player) {
+            clearInterval(checkStore);
+            
+            const updateRows = () => {
+              const track = window.__nanostores_player.$currentTrack.get();
+              const playing = window.__nanostores_player.$isPlaying.get();
+              
+              document.querySelectorAll('[data-player-row]').forEach(row => {
+                const isCurrent = row.dataset.playerAlbum === track.bookId && Number(row.dataset.playerChap) === track.chapIndex;
+                
+                const titleEl = row.querySelector('[data-player-title]');
+                const indexLabel = row.querySelector('[data-index-label]');
+                
+                if (isCurrent) {
+                  // Title highlight
+                  titleEl.classList.add('text-[#1db954]');
+                  titleEl.classList.remove('text-white');
+                  
+                  // Index / Icon highlight
+                  if (indexLabel) {
+                    if (playing) {
+                      // Spotify-style moving EQ icon representation
+                      indexLabel.innerHTML = '<svg fill="#1db954" width="14" height="14" viewBox="0 0 24 24"><path d="M8 9.4c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v5.2c0 .75-.7 1.4-1.6 1.4s-1.6-.65-1.6-1.4V9.4zM2 13.5c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v1.1c0 .75-.7 1.4-1.6 1.4S2 15.35 2 14.6v-1.1zm12-7c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v12.2c0 .75-.7 1.4-1.6 1.4s-1.6-.65-1.6-1.4V6.5zm6 4c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v4.2c0 .75-.7 1.4-1.6 1.4s-1.6-.65-1.6-1.4v-4.2z"/></svg>';
+                    } else {
+                      indexLabel.innerHTML = indexLabel.dataset.originalIndex;
+                    }
+                    indexLabel.classList.add('text-[#1db954]');
+                    indexLabel.classList.remove('text-white/60');
+                    indexLabel.classList.remove('group-hover:opacity-0');
+                  }
+                } else {
+                  // Revert normal styles
+                  titleEl.classList.remove('text-[#1db954]');
+                  titleEl.classList.add('text-white');
+                  
+                  if (indexLabel) {
+                    indexLabel.innerHTML = indexLabel.dataset.originalIndex;
+                    indexLabel.classList.remove('text-[#1db954]');
+                    indexLabel.classList.add('text-white/60');
+                    indexLabel.classList.add('group-hover:opacity-0');
+                  }
+                }
+              });
+            };
+            
+            // Subscribe to any track or play state changes
+            window.__nanostores_player.$currentTrack.subscribe(updateRows);
+            window.__nanostores_player.$isPlaying.subscribe(updateRows);
+          }
+        }, 100);
+      });
+    </script>
   </body>
 </html>

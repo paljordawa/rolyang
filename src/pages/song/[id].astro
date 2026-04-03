@@ -7,42 +7,71 @@ import PlayButton from '../../components/PlayButton.astro';
 import LikeButton from '../../components/LikeButton.astro';
 
 const { id } = Astro.params;
-const lastHyphenIndex = id?.lastIndexOf('-') ?? -1;
-const albumId = lastHyphenIndex !== -1 ? id?.substring(0, lastHyphenIndex) : id;
-const trackIndexStr = lastHyphenIndex !== -1 ? id?.substring(lastHyphenIndex + 1) : "0";
-const trackIndex = parseInt(trackIndexStr || "0", 10);
 
-// Fetch album details
-const albumResult = await client.execute({
-  sql: "SELECT * FROM albums WHERE id = ? LIMIT 1",
-  args: [albumId || ""]
-});
-const album = albumResult.rows[0] as any;
+const dummyGenres = ["Electronic", "Ambient", "Acoustic", "Pop", "Melodic House", "Chill", "Indie", "Classical"];
 
-// Fetch all tracks for this album
+let album: any = null;
+let track: any = null;
 let chapters: any[] = [];
-if (album) {
-  const tracksResult = await client.execute({
-    sql: "SELECT * FROM tracks WHERE album_id = ? ORDER BY id ASC",
+let trackIndex = 0;
+
+if (id?.startsWith('track-')) {
+  // New robust ID-based routing
+  const trackIdStr = id.substring(6);
+  
+  const trackResult = await client.execute({
+    sql: "SELECT * FROM tracks WHERE id = ? OR id = ?",
+    args: [trackIdStr, parseInt(trackIdStr, 10) || 0]
+  });
+  track = trackResult.rows[0];
+  
+  if (track) {
+    const albumResult = await client.execute({
+      sql: "SELECT * FROM albums WHERE id = ? OR id = ? LIMIT 1",
+      args: [track.album_id.toString(), track.album_id]
+    });
+    album = albumResult.rows[0];
+    
+    if (album) {
+      const tracksResult = await client.execute({
+        sql: "SELECT * FROM tracks WHERE album_id = ? ORDER BY id ASC",
+        args: [album.id]
+      });
+      chapters = tracksResult.rows;
+      trackIndex = chapters.findIndex(t => t.id.toString() === track.id.toString());
+      if (trackIndex === -1) trackIndex = 0;
+    }
+  }
+} else {
+  // Legacy routing (albumId-trackIndex)
+  const lastHyphenIndex = id?.lastIndexOf('-') ?? -1;
+  const albumId = lastHyphenIndex !== -1 ? id?.substring(0, lastHyphenIndex) : id;
+  const trackIndexStr = lastHyphenIndex !== -1 ? id?.substring(lastHyphenIndex + 1) : "0";
+  trackIndex = parseInt(trackIndexStr || "0", 10);
+
+  // Fetch album details
+  const albumResult = await client.execute({
+    sql: "SELECT * FROM albums WHERE id = ? LIMIT 1",
     args: [albumId || ""]
   });
-  chapters = tracksResult.rows;
+  album = albumResult.rows[0] as any;
+
+  // Fetch all tracks for this album
+  if (album) {
+    const tracksResult = await client.execute({
+      sql: "SELECT * FROM tracks WHERE album_id = ? ORDER BY id ASC",
+      args: [albumId || ""]
+    });
+    chapters = tracksResult.rows;
+    track = chapters[trackIndex];
+  }
 }
 
-// If no album found, redirect to 404 early
-if (!album) {
+// If no album or track found, redirect to 404 early
+if (!album || !track) {
   return Astro.redirect('/404');
 }
 
-const track = chapters[trackIndex] as any;
-
-// If no track at this index, redirect to 404
-if (!track) {
-  return Astro.redirect('/404');
-}
-
-// Dummy genre as requested
-const dummyGenres = ["Electronic", "Ambient", "Acoustic", "Pop", "Melodic House", "Chill", "Indie", "Classical"];
 const genre = (album as any).genre || dummyGenres[Math.floor(Math.random() * dummyGenres.length)];
 ---
 

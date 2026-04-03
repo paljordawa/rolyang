@@ -32,7 +32,11 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
           const prevChap = album.chapters[chapIdx - 1];
           if (prevChap) localStorage.setItem(`pos:${album.id}:${prevChap.id}`, '0');
       }
-      setChapIdx(ci => ci - 1);
+      if (window.__nanostores_player) {
+         window.__nanostores_player.updateTrack(album.id, chapIdx - 1, isPlaying);
+      } else {
+         setChapIdx(ci => ci - 1);
+      }
     }
   };
 
@@ -41,7 +45,11 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     if (album && album.chapters && chapIdx < album.chapters.length - 1) {
       const nextChap = album.chapters[chapIdx + 1];
       if (nextChap) localStorage.setItem(`pos:${album.id}:${nextChap.id}`, '0');
-      setChapIdx(ci => ci + 1);
+      if (window.__nanostores_player) {
+         window.__nanostores_player.updateTrack(album.id, chapIdx + 1, isPlaying);
+      } else {
+         setChapIdx(ci => ci + 1);
+      }
     }
   };
 
@@ -160,9 +168,6 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     const wasActuallyPlaying = wasPlaying && normalizedCurrentSrc === normalizedNewSrc;
     wasPlayingRef.current = wasActuallyPlaying;
     
-    // If switching tracks, preserve current time for potential restore
-    const previousTime = normalizedCurrentSrc && normalizedCurrentSrc !== normalizedNewSrc ? lastKnownTimeRef.current : null;
-    
     currentAudioSrcRef.current = newSrc;
     lastKnownAlbumChapRef.current = { albumId: album.id, chapId: chap.id };
     
@@ -174,36 +179,12 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
       audio.src = newSrc;
       audio.preload = 'auto'; // Change to 'auto' to load faster
       
-      // Restore time if we had a previous position
-      const saved = localStorage.getItem(`pos:${album.id}:${chap.id}`);
-      const timeToRestore = saved && Number(saved) > 2 ? Number(saved) : (previousTime || 0);
-      
-      // Set time immediately if audio is already loaded, otherwise wait for metadata
-      const setTime = (targetTime) => {
-        if (targetTime > 0) {
-          if (audio.readyState >= 2) {
-            // Audio is ready, set time immediately
-            audio.currentTime = targetTime;
-            setCurrent(targetTime);
-          } else {
-            // Wait for metadata
-            const setTimeOnLoad = () => {
-              if (audio.readyState >= 1) {
-                audio.currentTime = targetTime;
-                setCurrent(targetTime);
-                audio.removeEventListener('loadedmetadata', setTimeOnLoad);
-                audio.removeEventListener('canplay', setTimeOnLoad);
-              }
-            };
-            audio.addEventListener('loadedmetadata', setTimeOnLoad);
-            audio.addEventListener('canplay', setTimeOnLoad);
-          }
-        }
-      };
-      
-      if (timeToRestore > 0) {
-        setTime(timeToRestore);
+      // Always start fresh for musical tracks
+      if (audio.readyState >= 1) {
+          audio.currentTime = 0;
       }
+      setCurrent(0);
+      lastKnownTimeRef.current = 0;
       
       // If it was playing before or isPlaying is true, resume after load
       if ((!wasPaused && wasActuallyPlaying) || isPlaying) {
@@ -244,7 +225,11 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     const onEnd = () => {
       if (chapIdx < album.chapters.length - 1) {
         localStorage.setItem(`pos:${album.id}:${album.chapters[chapIdx + 1].id}`, '0');
-        setChapIdx(c => c + 1);
+        if (window.__nanostores_player) {
+           window.__nanostores_player.updateTrack(album.id, chapIdx + 1, true);
+        } else {
+           setChapIdx(c => c + 1);
+        }
       }
       else setIsPlaying(false);
     };

@@ -18,8 +18,8 @@ const genre = album.genre || "Electronic";
   data-player-chap={trackIndex}
 >
   <!-- Index / Play Icon -->
-  <div class="flex items-center justify-center relative">
-    <span class="text-sm font-medium text-white/60 group-hover:opacity-0 transition-opacity" data-index-label>{trackIndex + 1}</span>
+  <div class="flex items-center justify-center relative w-8">
+    <span class="text-sm font-medium text-white/60 group-hover:opacity-0 transition-opacity" data-index-label data-original-index={trackIndex + 1}>{trackIndex + 1}</span>
     <PlayButton 
       bookId={album.id.toString()}
       chapIndex={trackIndex}
@@ -35,7 +35,7 @@ const genre = album.genre || "Electronic";
     </div>
     <div class="flex flex-col min-w-0">
       <a 
-        href={`/song/${album.id}-${trackIndex}`}
+        href={`/song/track-${track.id}`}
         class="text-base font-bold text-white truncate hover:underline cursor-pointer block max-w-fit"
         data-player-title
         data-player-album={album.id}

@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import TrackTableHeader from '../../components/TrackTableHeader.astro';
 import TrackRow from '../../components/TrackRow.astro';
+import PlayButton from '../../components/PlayButton.astro';
 import { client } from '../../lib/db';
 
 const { id } = Astro.params;
@@ -69,9 +70,12 @@ const playlistTracks = tracksRes.rows as any[];
         <!-- Sticky Actions Bar -->
         <div class="flex items-center justify-between py-4 mb-8">
           <div class="flex items-center gap-6 md:gap-8">
-            <button class="w-14 h-14 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl hover:scale-105 active:scale-95 transition-all">
-              <svg viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
-            </button>
+            <PlayButton 
+              bookId={`playlist-${playlist.id}`}
+              chapIndex={0}
+              class="w-14 h-14 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl hover:scale-105 active:scale-95 transition-all"
+              svgClass="w-8 h-8 ml-1"
+            />
             <div class="flex items-center gap-4">
               <button 
                 id="edit-playlist-btn" 
@@ -98,7 +102,7 @@ const playlistTracks = tracksRes.rows as any[];
                 index={i}
                 track={track} 
                 album={{ 
-                    id: track.album_id, 
+                    id: `playlist-${playlist.id}`, // Makes the row talk to the player as part of the playlist
                     title: track.album_title, 
                     artist: track.album_artist, 
                     cover: track.album_cover 
