@@ -1,0 +1,23 @@
+---
+export interface Props {
+  bookId: string;
+  chapIndex: number;
+  class?: string;
+  svgClass?: string;
+}
+
+const { 
+  bookId, 
+  chapIndex, 
+  class: className = '', 
+  svgClass = 'w-5 h-5 ml-1' 
+} = Astro.props;
+---
+<button 
+  type="button"
+  class={`${className}`}
+  aria-label="Play"
+  onclick={`event.preventDefault(); event.stopPropagation(); if(window.playerPlay) window.playerPlay({bookId:'${bookId}', chapIndex:${chapIndex}, play:true});`}
+>
+  <svg viewBox="0 0 24 24" fill="currentColor" class={`${svgClass}`}><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+</button>

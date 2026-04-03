@@ -1,12 +1,50 @@
 ---
 import { ViewTransitions } from 'astro:transitions';
 import Player from '../components/Player.jsx';
-import albums from '../data/data.json';
+import { client } from '../lib/db';
 import "../styles.css"
+
 const { hideNav, backHref, playerStart, hidePlayerUntilPlaying } = Astro.props;
+
+// Fetch all albums and tracks for global state (from live DB)
+const albumsResult = await client.execute("SELECT * FROM albums ORDER BY id ASC");
+const albumsBase = albumsResult.rows as any[];
+
+const playlistsResult = await client.execute("SELECT * FROM playlists ORDER BY created_at DESC");
+const playlists = playlistsResult.rows as any[];
+
+const albums = await Promise.all(albumsBase.map(async (album) => {
+  const tracksResult = await client.execute({
+    sql: "SELECT * FROM tracks WHERE album_id = ? ORDER BY id ASC",
+    args: [album.id]
+  });
+  
+  // Sanitize for serialization - BigInt to string
+  const cleanAlbum = {
+    ...album,
+    id: album.id?.toString(),
+    chapters: tracksResult.rows.map((r: any) => ({
+      ...r,
+      id: r.id?.toString(),
+      album_id: r.album_id?.toString()
+    }))
+  };
+  return cleanAlbum;
+}));
+
+const cleanPlaylists = playlists.map(p => ({
+  ...p,
+  id: p.id?.toString()
+}));
 
 const siteTitle = 'Rolyang Music Player';
 const siteDescription = 'Listen to curated music from the Rolyang collection.';
+
+// Sanitize playerStart props for React/Astro serialization
+const cleanPlayerStart = playerStart ? {
+  ...playerStart,
+  startBookId: playerStart.startBookId?.toString()
+} : null;
 const siteOrigin = Astro.site ? Astro.site.origin : '';
 const canonicalUrl = siteOrigin ? new URL(Astro.url.pathname + Astro.url.search + Astro.url.hash, siteOrigin).toString() : Astro.url?.href || '';
 const ogImagePath = '/social.jpg';
@@ -37,7 +75,14 @@ const ogImageUrl = siteOrigin ? new URL(ogImagePath, siteOrigin).toString() : og
       window.playerPlay = window.playerPlay || function (payload) {
         try { 
           console.log('playerPlay called with:', payload);
+          // 1. Dispatch event (legacy support)
           window.dispatchEvent(new CustomEvent('player:play', { detail: payload })); 
+
+          // 2. Direct Nanostore update (new Phase 3 architectural bridge)
+          // This will be available once the Player island hydrates
+          if (window.__nanostores_player) {
+            window.__nanostores_player.updateTrack(payload.bookId, payload.chapIndex, payload.play !== false);
+          }
         } catch (e) { 
           console.error('playerPlay error:', e);
         }
@@ -45,7 +90,7 @@ const ogImageUrl = siteOrigin ? new URL(ogImagePath, siteOrigin).toString() : og
       console.log('playerPlay defined in head, type:', typeof window.playerPlay);
     </script>
     <script is:inline>
-      {`// Client helpers for SPA-like navigation and global player control
+// Client helpers for SPA-like navigation and global player control
 // - appNavigate(href): fetches page and swaps <main> content
 // - playerPlay(payload): dispatches player:play
 
@@ -85,6 +130,7 @@ async function appNavigate(href) {
     location.href = href;
   }
 }
+window.appNavigate = appNavigate;
 
 // delegation for player actions using data attributes - MUST be before link navigation
 function setupPlayerClickHandler() {
@@ -137,6 +183,22 @@ if (document.readyState === 'loading') {
 document.addEventListener('click', async (ev) => {
   if (ev.defaultPrevented) return;
   const anyEv = ev;
+  const target = anyEv.target;
+
+  // Handle data-nav-artist specifically first (allows nested links)
+  const artistEl = (target && target.closest) ? target.closest('[data-nav-artist]') : null;
+  if (artistEl) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    var name = artistEl.getAttribute('data-nav-artist');
+    if (name) {
+      if (window.appNavigate) {
+        window.appNavigate('/artist/' + encodeURIComponent(name));
+      }
+    }
+    return;
+  }
+
   let el = anyEv.target;
   while (el && el.nodeName !== 'A') el = el.parentElement;
   if (!el || el.nodeName !== 'A') return;
@@ -144,7 +206,8 @@ document.addEventListener('click', async (ev) => {
   if (!href || (href.startsWith('http') && !href.startsWith(location.origin))) return; // external
   if ((el.hasAttribute && el.hasAttribute('data-no-route')) || el.target === '_blank') return;
   ev.preventDefault();
-  appNavigate(href);
+  // @ts-ignore
+  if (window.appNavigate) window.appNavigate(href);
 });
 
 // popstate -> navigate
@@ -174,7 +237,7 @@ if (document.readyState === 'loading') {
 }
 })();
 
-console.log('Script initialization complete, window.playerPlay:', typeof window.playerPlay);`}
+console.log('Script initialization complete, window.playerPlay:', typeof window.playerPlay);
     </script>
   </head>
   <body class="bg-[#000000] text-white h-[100dvh] overflow-hidden flex flex-col font-sans select-none">
@@ -214,36 +277,350 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
               <span class="font-bold text-sm">Your Library</span>
             </div>
             <div class="flex gap-2">
-              <span class="p-1 hover:bg-white/10 rounded-full transition"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>
+              <span id="create-playlist-btn" class="p-1 hover:bg-white/10 rounded-full transition cursor-pointer" title="Create Playlist"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>
               <span class="p-1 hover:bg-white/10 rounded-full transition"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
             </div>
           </div>
           
-          <div class="flex gap-2 px-2 pb-4">
-             <span class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition cursor-pointer">Playlists</span>
-             <span class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition cursor-pointer">Albums</span>
-             <span class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition cursor-pointer">Artists</span>
+          <div class="flex gap-2 px-2 pb-4 overflow-x-auto no-scrollbar">
+             <span data-library-filter="playlists" class="px-3 py-1.5 rounded-full text-black bg-white text-xs font-semibold hover:bg-white/20 transition cursor-pointer whitespace-nowrap js-library-pill active-pill">Playlists</span>
+             <span data-library-filter="albums" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition cursor-pointer whitespace-nowrap js-library-pill">Albums</span>
+             <span data-library-filter="artists" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition cursor-pointer whitespace-nowrap js-library-pill">Artists</span>
           </div>
           
-          <!-- Playlists scroll container -->
-          <div class="overflow-y-auto flex-1 px-1 space-y-1">
-            {albums.map((album) => (
-              <div 
-                class="flex items-center gap-3 group cursor-pointer hover:bg-white/10 p-2 rounded-md transition-colors" 
-                data-player-album={album.id} 
-                data-player-chap="0" 
-                data-player-expand="false"
-              >
-                <img src={album.cover} alt={album.title} class="w-12 h-12 rounded object-cover shadow-[0_4px_10px_rgba(0,0,0,0.3)]" />
-                <div class="flex-1 min-w-0">
-                  <div class="text-base font-medium truncate text-white">{album.title}</div>
-                  <div class="text-[13px] text-white/70 truncate mt-0.5">Album • {album.author}</div>
-                </div>
-              </div>
-            ))}
+          <!-- Library container -->
+          <div id="library-list-container" class="overflow-y-auto flex-1 px-1 space-y-1">
+            <!-- Items injected by script -->
+            <div class="p-4 text-center text-white/40 text-sm">Loading library...</div>
           </div>
+          <script id="library-data-json" type="application/json" is:inline set:html={JSON.stringify(albums)} />
+          <script is:inline set:html={`window.__libraryData = ${JSON.stringify(albums)}; window.__userPlaylists = ${JSON.stringify(cleanPlaylists)};`} />
         </div>
       </aside>
+
+
+      <script>
+        import { $likedTracks } from '../store/playerStore';
+
+        function renderLibrary(filter: string = 'albums') {
+          const container = document.getElementById('library-list-container');
+          const pills = document.querySelectorAll('.js-library-pill');
+          if (!container) return;
+          
+          // Ensure data is available
+          if (!(window as any).__libraryData) {
+            const dataTag = document.getElementById('library-data-json');
+            if (dataTag) {
+               try {
+                 (window as any).__libraryData = JSON.parse(dataTag.textContent || '[]');
+                 console.log('Library data parsed successfully');
+               } catch(e) {
+                 console.error('Failed to parse library data', e);
+               }
+            }
+          }
+
+          const allAlbums = (window as any).__libraryData as any[];
+          if (!Array.isArray(allAlbums)) {
+            console.error('Library data is not an array', allAlbums);
+            return;
+          }
+          
+          // Update visual state
+          pills.forEach(p => {
+            if (p.getAttribute('data-library-filter') === filter) {
+              p.classList.add('bg-white', 'text-black');
+              p.classList.remove('bg-white/10', 'text-white');
+            } else {
+              p.classList.remove('bg-white', 'text-black');
+              p.classList.add('bg-white/10', 'text-white');
+            }
+          });
+
+          let items: any[] = [];
+          const likes = $likedTracks.get();
+
+          if (filter === 'playlists') {
+            // 1. Synthetic 'Liked Songs' playlist
+            items = [{
+              id: 'liked-songs',
+              name: 'Liked Songs',
+              title: 'Liked Songs',
+              artist: 'Playlist',
+              isLikedSongs: true,
+              count: Object.keys(likes).length,
+              cover: 'gradient' // Special indicator
+            }];
+            
+            // 2. Real User Playlists
+            const userPlaylists = (window as any).__userPlaylists || [];
+            items = [...items, ...userPlaylists.map((p: any) => ({
+              ...p,
+              artist: 'Playlist'
+            }))];
+          } else if (filter === 'albums') {
+            items = allAlbums;
+          } else if (filter === 'artists') {
+            // Deduplicate by artist
+            const artistsMap = new Map();
+            const followed = $followedArtists.get();
+            
+            allAlbums.forEach(a => {
+              if (!artistsMap.has(a.artist)) {
+                artistsMap.set(a.artist, { 
+                  id: a.id, 
+                  title: a.artist, 
+                  cover: a.cover,
+                  isArtist: true,
+                  isFollowed: !!followed[a.artist]
+                });
+              }
+            });
+            // Prioritize followed artists
+            items = Array.from(artistsMap.values()).sort((a, b) => (b.isFollowed ? 1 : 0) - (a.isFollowed ? 1 : 0));
+          } else if (filter === 'liked' || filter === 'liked_detail') {
+            // Filter individual tracks from all albums
+            allAlbums.forEach(a => {
+              a.chapters.forEach((ch: any, i: number) => {
+                if (likes[`${a.id}:${ch.id}`]) {
+                  items.push({
+                    id: a.id,
+                    trackId: ch.id,
+                    trackIndex: i,
+                    title: ch.title,
+                    artist: a.artist,
+                    cover: a.cover,
+                    isSong: true
+                  });
+                }
+              });
+            });
+          }
+
+          if (items.length === 0) {
+            container.innerHTML = `<div class="p-8 text-center text-white/40 text-sm italic">No items found in your ${filter}.</div>`;
+            return;
+          }
+
+          container.innerHTML = (filter === 'liked_detail' ? `
+            <div class="px-2 py-2 flex items-center gap-2 cursor-pointer text-white/50 hover:text-white transition group" id="library-back-to-playlists">
+              <svg class="w-4 h-4 transition-transform group-hover:-translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              <span class="text-xs font-bold uppercase tracking-wider">Back to Playlists</span>
+            </div>
+          ` : '') + items.map(item => {
+            const href = item.isLikedSongs ? '/collection/tracks' : (item.isArtist ? `/artist/${encodeURIComponent(item.title)}` : (item.artist === 'Playlist' ? `/playlist/${item.id}` : `/album/${item.id}`));
+            return `
+              <a 
+                href="${href}"
+                class="flex items-center gap-3 group cursor-pointer hover:bg-white/10 p-2 rounded-md transition-colors relative no-underline" 
+                data-library-item
+                ${item.isSong ? `data-play-library-song='${JSON.stringify({bookId: item.id, chapIndex: item.trackIndex})}'` : ''}
+              >
+                <div class="shrink-0 relative">
+                  ${item.cover && item.cover !== 'gradient' ? `<img src="${item.cover}" alt="${item.title}" class="w-12 h-12 rounded ${item.isArtist ? 'rounded-full' : ''} object-cover shadow-[0_4px_10px_rgba(0,0,0,0.3)]" />` : ''}
+                  ${item.isLikedSongs ? `
+                    <div class="absolute inset-0 rounded bg-gradient-to-br from-[#450af5] to-[#8e8ee5] flex items-center justify-center">
+                      <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
+                    </div>
+                  ` : ''}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium truncate text-white flex items-center gap-2">
+                    ${item.title}
+                    ${item.isFollowed ? '<div class="w-2 h-2 rounded-full bg-[#1db954]"></div>' : ''}
+                  </div>
+                  <div class="text-[12px] text-white/50 truncate mt-0.5">${item.isArtist ? 'Artist' : (item.isLikedSongs ? `Playlist • ${item.count} songs` : (item.isSong ? item.artist : 'Album • ' + (item.artist || '')))}</div>
+                </div>
+                ${item.isSong ? `
+                <div class="opacity-0 group-hover:opacity-100 transition-opacity pr-2">
+                  <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-[#1db954]"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+                </div>` : ''}
+              </a>
+            `;
+          }).join('');
+
+          // Wire up interactions
+          container.querySelectorAll('[data-play-library-song]').forEach(el => {
+            el.addEventListener('click', (e) => {
+              // Only play if they didn't click external parts if any
+              const data = JSON.parse(el.getAttribute('data-play-library-song') || '{}');
+              // @ts-ignore
+              if (window.playerPlay) window.playerPlay({ bookId: data.bookId, chapIndex: data.trackIndex });
+            });
+          });
+        }
+
+        // Listen for pill clicks
+        document.addEventListener('click', (e) => {
+          const pill = (e.target as HTMLElement).closest('.js-library-pill');
+          if (pill) {
+            const filter = pill.getAttribute('data-library-filter');
+            if (filter) renderLibrary(filter);
+          }
+        });
+
+        // Listen for store updates to refresh views
+        $likedTracks.subscribe(() => {
+          const activePill = document.querySelector('.js-library-pill.active-pill') || document.querySelector('.js-library-pill.bg-white');
+          if (activePill) {
+            const currentFilter = activePill.getAttribute('data-library-filter');
+            if (currentFilter === 'playlists') renderLibrary('playlists');
+            const backBtn = document.getElementById('library-back-to-playlists');
+            if (backBtn) renderLibrary('liked_detail');
+          }
+        });
+
+        // Sync Follow state in sidebar
+        import { $followedArtists } from '../store/playerStore';
+
+        // Global creation function
+        let currentEditId: string | null = null;
+        let trackToAddOnCreate: string | null = null;
+        (window as any).createPlaylist = (trackId?: string) => {
+          currentEditId = null;
+          trackToAddOnCreate = trackId || null;
+          const modal = document.getElementById('create-playlist-modal');
+          const titleEl = document.getElementById('modal-title');
+          const confirmBtn = document.getElementById('confirm-playlist-btn');
+          const input = document.getElementById('playlist-name-input') as HTMLInputElement;
+          const descInput = document.getElementById('playlist-description-input') as HTMLInputElement;
+          
+          if (modal && input && titleEl && confirmBtn) {
+            titleEl.textContent = 'Create Playlist';
+            confirmBtn.textContent = 'Create';
+            input.value = `My Playlist #${((window as any).__userPlaylists?.length || 0) + 1}`;
+            descInput.value = '';
+            modal.classList.remove('hidden');
+            input.focus();
+            input.select();
+          }
+        };
+
+        (window as any).openEditPlaylistModal = (data: { id: string, title: string, description: string }) => {
+          currentEditId = data.id;
+          const modal = document.getElementById('create-playlist-modal');
+          const titleEl = document.getElementById('modal-title');
+          const confirmBtn = document.getElementById('confirm-playlist-btn');
+          const input = document.getElementById('playlist-name-input') as HTMLInputElement;
+          const descInput = document.getElementById('playlist-description-input') as HTMLInputElement;
+
+          if (modal && input && titleEl && confirmBtn) {
+            titleEl.textContent = 'Edit Details';
+            confirmBtn.textContent = 'Save';
+            input.value = data.title || '';
+            descInput.value = data.description || '';
+            modal.classList.remove('hidden');
+            input.focus();
+          }
+        };
+
+        // Modal Action Logic
+        (function setupPlaylistModal() {
+          const modal = document.getElementById('create-playlist-modal');
+          const cancelBtn = document.getElementById('cancel-playlist-btn');
+          const confirmBtn = document.getElementById('confirm-playlist-btn');
+          const input = document.getElementById('playlist-name-input') as HTMLInputElement;
+          const descInput = document.getElementById('playlist-description-input') as HTMLInputElement;
+
+          const closeModal = () => modal?.classList.add('hidden');
+
+          cancelBtn?.addEventListener('click', closeModal);
+          modal?.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+          });
+
+          confirmBtn?.addEventListener('click', async () => {
+            const title = input.value.trim();
+            const description = descInput.value.trim();
+            if (!title) return;
+
+            const isEdit = !!currentEditId;
+            confirmBtn.textContent = isEdit ? 'Saving...' : 'Creating...';
+            // @ts-ignore
+            confirmBtn.disabled = true;
+
+            try {
+              const url = isEdit ? `/api/library/playlists/${currentEditId}` : '/api/library/playlists';
+              const method = isEdit ? 'PATCH' : 'POST';
+              
+              const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, description })
+              });
+              
+              if (res.ok) {
+                if (!isEdit) {
+                  const newPlaylist = await res.json();
+                  (window as any).__userPlaylists = [newPlaylist, ...((window as any).__userPlaylists || [])];
+                  
+                  // Automatically add track if we came from one
+                  if (trackToAddOnCreate) {
+                    await fetch('/api/library/playlists', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ playlistId: newPlaylist.id, trackId: trackToAddOnCreate })
+                    });
+                  }
+
+                  if (typeof renderLibrary === 'function') renderLibrary('playlists');
+                  closeModal();
+                  if (window.appNavigate) window.appNavigate(`/playlist/${newPlaylist.id}`);
+                } else {
+                  // Edit mode - just refresh current page
+                  closeModal();
+                  location.reload();
+                }
+              }
+            } catch (e) {
+              console.error('Failed to handle playlist action:', e);
+            } finally {
+               confirmBtn.textContent = isEdit ? 'Save' : 'Create';
+               // @ts-ignore
+               confirmBtn.disabled = false;
+            }
+          });
+        })();
+
+        document.getElementById('create-playlist-btn')?.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          (window as any).createPlaylist();
+        });
+
+        $followedArtists.subscribe(() => {
+          const activePill = document.querySelector('.js-library-pill.active-pill') || document.querySelector('.js-library-pill.bg-white');
+          if (activePill && activePill.getAttribute('data-library-filter') === 'artists') {
+            renderLibrary('artists');
+          }
+        });
+
+        // Handle navigation events
+        window.addEventListener('app:navigation', () => {
+          const isTracks = window.location.pathname === '/collection/tracks';
+          if (isTracks) {
+            renderLibrary('playlists');
+          } else {
+            const activePill = document.querySelector('.js-library-pill.active-pill') || document.querySelector('.js-library-pill.bg-white');
+            const currentFilter = activePill ? activePill.getAttribute('data-library-filter') : 'albums';
+            renderLibrary(currentFilter || 'albums');
+          }
+        });
+
+        // Lifecycle: DOMContentLoaded, Initial run, and Astro ViewTransitions
+        document.addEventListener('DOMContentLoaded', () => {
+          renderLibrary('playlists');
+        });
+        
+        document.addEventListener('astro:after-swap', () => {
+          renderLibrary('playlists');
+        });
+
+        // Immediate run
+        (function() {
+          renderLibrary('playlists');
+        })();
+      </script>
 
       <!-- Main Content Area -->
       <main id="main-content" class="flex-1 bg-[#121212] rounded-lg overflow-y-auto overflow-x-hidden relative">
@@ -317,7 +694,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
       data-hidden={hidePlayerUntilPlaying ? 'true' : 'false'}
     >
       <!-- hydrate the Player island on the client when it loads -->
-      <Player client:load books={(albums as any)} startBookId={playerStart?.startBookId} startChapIndex={playerStart?.startChapIndex} />
+      <Player client:load books={(albums as any)} startBookId={cleanPlayerStart?.startBookId} startChapIndex={cleanPlayerStart?.startChapIndex} />
     </div>
 
     <!-- Mobile Bottom Navigation -->
@@ -363,10 +740,10 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
     {hidePlayerUntilPlaying ? (
       <>
         <style>
-          {`[data-player-shell][data-hidden="true"]{opacity:0;pointer-events:none;transform:translateY(24px);}`}
+          [data-player-shell][data-hidden="true"]{opacity:0;pointer-events:none;transform:translateY(24px);}
         </style>
         <script>
-          {`(() => {
+(() => {
 function reveal() {
   const shell = document.querySelector('[data-player-shell]');
   if (!shell) return;
@@ -379,9 +756,294 @@ window.addEventListener('player:play', () => reveal());
 try {
   if (window.__playerNowPlaying && window.__playerNowPlaying.isPlaying !== false) reveal();
 } catch (e) {}
-})();`}
+})();
         </script>
       </>
     ) : null}
+    <script>
+      import { $likedTracks, toggleLike } from '../store/playerStore';
+
+      // 1. Global Click Delegation for Heart Icons
+      document.addEventListener('click', (e) => {
+        const btn = (e.target as HTMLElement).closest('.js-like-btn') as HTMLElement;
+        if (btn) {
+          const albumId = btn.getAttribute('data-album-id');
+          const chapId = btn.getAttribute('data-chap-id');
+          if (albumId && chapId) {
+            // @ts-ignore
+            // @ts-ignore
+            if (window.__nanostores_player && typeof (window as any).__nanostores_player.toggleLike === 'function') {
+              // @ts-ignore
+              window.__nanostores_player.toggleLike(albumId, chapId);
+            } else {
+              toggleLike(albumId, chapId);
+            }
+          }
+        }
+      });
+
+      // 2. Global Sync: Update ALL heart icons when state changes
+      $likedTracks.subscribe((likes: Record<string, boolean>) => {
+        document.querySelectorAll('.js-like-btn').forEach((btn: Element) => {
+          const albumId = btn.getAttribute('data-album-id');
+          const chapId = btn.getAttribute('data-chap-id');
+          const isLiked = !!likes[`${albumId}:${chapId}`];
+          
+          const empty = btn.querySelector('.empty-heart');
+          const filled = btn.querySelector('.filled-heart');
+          
+          if (isLiked) {
+            empty?.classList.add('hidden');
+            filled?.classList.remove('hidden');
+          } else {
+            empty?.classList.remove('hidden');
+            filled?.classList.add('hidden');
+          }
+        });
+      });
+
+      // 3. Global Follow Logic
+      import { $followedArtists, toggleFollow } from '../store/playerStore';
+
+      document.addEventListener('click', (e) => {
+        const btn = (e.target as HTMLElement).closest('.js-follow-btn') as HTMLElement;
+        if (btn) {
+          const name = btn.getAttribute('data-artist-name');
+          if (name) {
+            // @ts-ignore
+            if (window.__nanostores_player) {
+              // @ts-ignore
+              window.__nanostores_player.toggleFollow(name);
+            } else {
+              toggleFollow(name);
+            }
+          }
+        }
+      });
+
+      $followedArtists.subscribe((followed: Record<string, boolean>) => {
+        document.querySelectorAll('.js-follow-btn').forEach((btn: Element) => {
+          const name = btn.getAttribute('data-artist-name');
+          const isFollowed = !!followed[name || ""];
+          
+          (btn as HTMLElement).textContent = isFollowed ? 'Following' : 'Follow';
+          if (isFollowed) {
+             btn.classList.add('bg-[#1db954]', 'border-[#1db954]', 'text-black');
+             btn.classList.remove('border-white/30', 'text-white');
+          } else {
+             btn.classList.remove('bg-[#1db954]', 'border-[#1db954]', 'text-black');
+             btn.classList.add('border-white/30', 'text-white');
+          }
+        });
+      });
+
+      // --- Add to Playlist Global Logic ---
+      document.addEventListener('click', async (e) => {
+        const btn = (e.target as HTMLElement).closest('.js-add-to-playlist-btn') as HTMLElement;
+        if (!btn) return;
+        
+        const trackId = btn.getAttribute('data-track-id');
+        if (trackId) (window as any).createPlaylist(trackId);
+      });
+
+      function showPlaylistSelector(trackId: string, anchor: HTMLElement) {
+        let selector = document.getElementById('global-playlist-selector');
+        if (!selector) {
+          selector = document.createElement('div');
+          selector.id = 'global-playlist-selector';
+          selector.className = 'fixed z-[100] bg-[#282828] border border-white/10 rounded shadow-2xl py-2 w-48 hidden';
+          document.body.appendChild(selector);
+        }
+
+        const playlists = (window as any).__userPlaylists || [];
+        selector.innerHTML = `
+          <div class="px-4 py-2 text-[11px] font-bold text-white/50 uppercase tracking-wider">Add to playlist</div>
+          ${playlists.map((p: any) => `
+            <div class="px-4 py-2 text-sm hover:bg-white/10 cursor-pointer text-white truncate" data-playlist-id="${p.id}">${p.title}</div>
+          `).join('')}
+        `;
+
+        // Position it near the button
+        const rect = anchor.getBoundingClientRect();
+        selector.style.top = `${rect.bottom + window.scrollY + 5}px`;
+        selector.style.left = `${rect.left + window.scrollX - 160}px`;
+        selector.classList.remove('hidden');
+
+        // Handle item click
+        const items = selector.querySelectorAll('[data-playlist-id]');
+        items.forEach(item => {
+          item.addEventListener('click', async () => {
+            const playlistId = item.getAttribute('data-playlist-id');
+            try {
+              const res = await fetch('/api/library/playlists/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playlistId, trackId })
+              });
+              if (res.ok) {
+                 // Simple feedback
+                 const originalContent = anchor.innerHTML;
+                 anchor.innerHTML = '<svg class="w-4 h-4 text-[#1db954]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
+                 setTimeout(() => { anchor.innerHTML = originalContent; }, 2000);
+              }
+            } catch (e) {
+              console.error('Failed to add track to playlist:', e);
+            }
+            selector?.classList.add('hidden');
+          });
+        });
+
+        // Close on outside click
+        const closeOnOutside = (e: MouseEvent) => {
+          if (selector && !selector.contains(e.target as Node) && e.target !== anchor) {
+            selector.classList.add('hidden');
+            document.removeEventListener('click', closeOnOutside);
+          }
+        };
+        setTimeout(() => document.addEventListener('click', closeOnOutside), 10);
+      }
+
+      // --- Track Context Menu ---
+      document.addEventListener('click', (e) => {
+        const btn = (e.target as HTMLElement).closest('.js-track-more-btn') as HTMLElement;
+        if (!btn) return;
+        
+        const trackId = btn.getAttribute('data-track-id');
+        if (!trackId) return;
+
+        showTrackContextMenu(trackId, btn);
+      });
+
+      function showTrackContextMenu(trackId: string, anchor: HTMLElement) {
+        let menu = document.getElementById('global-track-context-menu');
+        if (!menu) {
+          menu = document.createElement('div');
+          menu.id = 'global-track-context-menu';
+          menu.className = 'fixed z-[100] bg-[#282828] border border-white/10 rounded shadow-2xl py-1 w-48 hidden';
+          document.body.appendChild(menu);
+        }
+
+        let extraItems = '';
+        const isPlaylistPage = window.location.pathname.startsWith('/playlist/');
+        if (isPlaylistPage) {
+           const playlistId = window.location.pathname.split('/').pop();
+           extraItems = `
+            <div class="h-[1px] bg-white/10 my-1"></div>
+            <div class="px-4 py-2 text-sm hover:bg-white/10 cursor-pointer text-white flex items-center gap-3" id="ctx-remove-from-playlist" data-playlist-id="${playlistId}">
+               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+               Remove from this playlist
+            </div>
+           `;
+        }
+
+        menu.innerHTML = `
+          <div class="px-4 py-2 text-sm hover:bg-white/10 cursor-pointer text-white flex items-center gap-3" id="ctx-add-to-playlist">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Add to playlist
+          </div>
+          <div class="px-4 py-2 text-sm hover:bg-white/10 cursor-pointer text-white flex items-center gap-3" id="ctx-create-playlist">
+             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+             Create Playlist
+          </div>
+          ${extraItems}
+          <div class="h-[1px] bg-white/10 my-1"></div>
+          <div class="px-4 py-2 text-sm hover:bg-white/10 cursor-pointer text-white flex items-center gap-3" id="ctx-go-to-artist">
+             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+             Go to artist
+          </div>
+        `;
+
+        // Position
+        const rect = anchor.getBoundingClientRect();
+        menu.style.top = `${rect.bottom + window.scrollY + 5}px`;
+        menu.style.left = `${rect.left + window.scrollX - 160}px`;
+        menu.classList.remove('hidden');
+
+        // Actions
+        menu.querySelector('#ctx-add-to-playlist')?.addEventListener('click', () => {
+          menu?.classList.add('hidden');
+          showPlaylistSelector(trackId, anchor);
+        });
+
+        menu.querySelector('#ctx-create-playlist')?.addEventListener('click', () => {
+          menu?.classList.add('hidden');
+          (window as any).createPlaylist();
+        });
+
+        menu.querySelector('#ctx-remove-from-playlist')?.addEventListener('click', async () => {
+          const playlistId = (menu?.querySelector('#ctx-remove-from-playlist') as HTMLElement).getAttribute('data-playlist-id');
+          menu?.classList.add('hidden');
+          if (!playlistId) return;
+
+          try {
+             const res = await fetch('/api/library/playlists/remove', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ playlistId, trackId })
+             });
+             if (res.ok) {
+                location.reload();
+             }
+          } catch (e) {
+             console.error('Failed to remove track:', e);
+          }
+        });
+
+        menu.querySelector('#ctx-go-to-artist')?.addEventListener('click', () => {
+          menu?.classList.add('hidden');
+          // We don't have the artist name here easily without passing it, 
+          // but we can find it from the row if needed.
+          const row = anchor.closest('[data-player-row]') as HTMLElement;
+          const artistLink = row?.querySelector('a[href^="/artist/"]') as HTMLAnchorElement;
+          if (artistLink) {
+             // @ts-ignore
+             window.appNavigate(artistLink.getAttribute('href'));
+          }
+        });
+
+        // Close on outside click
+        const closeMenu = (e: MouseEvent) => {
+          if (menu && !menu.contains(e.target as Node) && e.target !== anchor) {
+            menu.classList.add('hidden');
+            document.removeEventListener('click', closeMenu);
+          }
+        };
+        setTimeout(() => document.addEventListener('click', closeMenu), 10);
+      }
+    </script>
+
+    <!-- Create Playlist Modal -->
+    <div id="create-playlist-modal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div class="bg-[#282828] w-full max-w-md rounded-xl shadow-2xl p-8 border border-white/5 animate-in fade-in zoom-in duration-200">
+        <h2 id="modal-title" class="text-2xl font-black text-white mb-6 tracking-tight">Create Playlist</h2>
+        
+        <div class="space-y-4">
+          <div>
+            <label for="playlist-name-input" class="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Playlist Name</label>
+            <input 
+              type="text" 
+              id="playlist-name-input" 
+              placeholder="My Awesome Playlist"
+              class="w-full bg-[#3e3e3e] border-none rounded-md p-3 text-white placeholder-white/20 focus:ring-2 focus:ring-[#1db954] transition-all outline-none"
+            />
+          </div>
+          
+          <div>
+            <label for="playlist-description-input" class="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Description (optional)</label>
+            <textarea 
+              id="playlist-description-input" 
+              rows="3"
+              placeholder="Give your playlist a description"
+              class="w-full bg-[#3e3e3e] border-none rounded-md p-3 text-white placeholder-white/20 focus:ring-2 focus:ring-[#1db954] transition-all outline-none resize-none"
+            ></textarea>
+          </div>
+        </div>
+        
+        <div class="flex items-center justify-end gap-4 mt-8">
+          <button id="cancel-playlist-btn" class="px-6 py-2.5 text-sm font-bold text-white hover:scale-105 active:scale-95 transition-all">Cancel</button>
+          <button id="confirm-playlist-btn" class="px-8 py-2.5 bg-[#1db954] rounded-full text-black text-sm font-bold shadow-lg hover:scale-105 active:scale-95 transition-all">Create</button>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

@@ -1,0 +1,60 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { client } from '../lib/db';
+import SkeletonAlbum from '../components/SkeletonAlbum.astro';
+import AlbumCard from '../components/AlbumCard.astro';
+
+const albumsResult = await client.execute("SELECT * FROM albums");
+const albums = albumsResult.rows;
+
+// Fetch first track for each album to support quick play
+const tracksResult = await client.execute("SELECT id, album_id FROM tracks WHERE id LIKE '%c1' OR id LIKE '%0'");
+const firstTracks = Object.fromEntries(tracksResult.rows.map(t => [t.album_id, t.id]));
+---
+<Layout title="Your Library">
+  <div class="px-4 pt-6 md:pt-10">
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-3xl font-bold text-white">Your Library</h1>
+      <div class="flex items-center gap-4">
+        <button class="p-2 text-white/70 hover:text-white transition-colors" aria-label="Sort">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M3 6h18M6 12h12m-9 6h6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    {albums.length === 0 ? (
+      <SkeletonAlbum count={6} />
+    ) : (
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+        {albums.map((album) => (
+          <AlbumCard 
+            id={album.id as string} 
+            title={album.title as string} 
+            artist={`Album • ${album.artist as string}`} 
+            cover={album.cover as string} 
+            width="auto"
+          />
+        ))}
+      </div>
+    )}
+  </div>
+</Layout>
+
+<script>
+  // Wire up the quick play buttons
+  document.querySelectorAll('[data-player-book]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      (window as any).playerPlay = (window as any).playerPlay || function (payload: any) {
+        try { 
+          console.log('playerPlay called with:', payload);
+          window.dispatchEvent(new CustomEvent('player:play', { detail: payload }));
+          if ((window as any).__nanostores_player) {
+            (window as any).__nanostores_player.updateTrack(payload.bookId, payload.chapIndex, payload.play !== false);
+          }
+        } catch (e) { 
+          console.error('playerPlay error:', e);
+        }
+      };
+    });
+  });
+</script>

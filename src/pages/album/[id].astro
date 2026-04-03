@@ -1,194 +1,146 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import albums from '../../data/data.json';
-
-export async function getStaticPaths() {
-  return albums.map((b) => ({ params: { id: b.id } }));
-}
+import { client } from '../../lib/db';
+import TrackTableHeader from '../../components/TrackTableHeader.astro';
+import TrackRow from '../../components/TrackRow.astro';
+import PlayButton from '../../components/PlayButton.astro';
 
 const { id } = Astro.params;
-const album = albums.find(b => b.id === id);
+
+// Fetch album details
+const albumResult = await client.execute({
+  sql: "SELECT * FROM albums WHERE id = ? LIMIT 1",
+  args: [id || ""]
+});
+const album = albumResult.rows[0] as any;
+
+// Fetch tracks for this album
+let chapters: any[] = [];
+let totalDurationSeconds = 0;
+
+if (album) {
+  const tracksResult = await client.execute({
+    sql: "SELECT * FROM tracks WHERE album_id = ? ORDER BY id ASC",
+    args: [id || ""]
+  });
+  chapters = tracksResult.rows;
+
+  // Calculate total duration
+  chapters.forEach((ch) => {
+    if (ch.duration) {
+      const parts = ch.duration.split(':').map(Number);
+      if (parts.length === 2) {
+        totalDurationSeconds += parts[0] * 60 + parts[1];
+      } else if (parts.length === 3) {
+        totalDurationSeconds += parts[0] * 3600 + parts[1] * 60 + parts[2];
+      }
+    }
+  });
+}
+
+function formatTotalDuration(seconds: number) {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  if (hrs > 0) return `${hrs} hr ${mins} min`;
+  return `${mins} min`;
+}
+
+const totalDurationFormatted = formatTotalDuration(totalDurationSeconds);
 ---
 <Layout backHref="/" hideNav>
   {album ? (
-    <div class="fixed top-0 left-0 right-0 h-[50vh] z-10 overflow-hidden flex items-end" aria-hidden="true"
-      style={`background-image: linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0.6)), url(${album.cover}); background-size: cover; background-position: center;`}>
-      <img src={album.cover} alt={album.title} class="sr-only" />
-      <div class="w-full h-36 bg-gradient-to-t from-slate-600 via-slate-700/10 "></div>
-      
-    </div>
-  ) : null}
+    <div class="relative min-h-screen">
+      <!-- Immersive Header Background -->
+      <div 
+        class="absolute top-0 left-0 right-0 h-[400px] -z-10 blur-[80px] opacity-30"
+        style={`background-image: url(${album.cover}); background-size: cover; background-position: center;`}
+      ></div>
+      <div class="absolute top-0 left-0 right-0 h-[400px] -z-20 bg-gradient-to-b from-white/10 to-transparent"></div>
 
-  <section class="max-w-md mx-auto relative z-20 bg-gradient-to-t from-slate-600  to-slate-600/0 py-5">
-    <div class="h-[20vh] "></div>
-    {album ? (
-        <div class="text-center">
-          <div class="mx-auto w-40 h-40 rounded-xl overflow-hidden shadow-lg mb-4 bg-gradient-to-b from-gray-900 to-black">
+      <div class="pt-20 px-6 md:px-8 pb-8">
+        <!-- Hero Header -->
+        <div class="flex flex-col md:flex-row items-end gap-6 md:gap-8 mb-8">
+          <div class="w-48 h-48 md:w-60 md:h-60 shrink-0 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden group relative">
             <img src={album.cover} alt={album.title} class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </div>
-          <p class="mt-2 text-sm text-white/70">{album.description}</p>
-          <h1 class="page-title text-2xl font-bold mt-2">{album.title}</h1>
-          <p class="text-sm text-white/70">{album.artist}</p>
-          <div class="mt-3 flex items-center justify-center gap-4 text-xs text-white/60">
-            <div>{album.chapters.length} chapters</div>
-            <div>•</div>
-            <div>{/* placeholder total duration */}3h 14m</div>
+          
+          <div class="flex flex-col gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-white/90">Album</span>
+            <h1 class="text-4xl md:text-7xl font-black text-white tracking-tighter mb-2 leading-tight">
+              {album.title}
+            </h1>
+            <div class="flex items-center flex-wrap gap-2 text-sm font-bold text-white">
+              <span class="hover:underline cursor-pointer">{album.artist}</span>
+              <span class="text-white/60">•</span>
+              <span class="text-white/60 font-medium">{chapters.length} songs, {totalDurationFormatted}</span>
+            </div>
           </div>
         </div>
 
-        <style>
-          {`
-[data-player-row][data-active="true"] {
-  background-color: rgba(255,255,255,0.18);
-  box-shadow: 0 8px 24px rgba(15,23,42,0.3);
-}
-[data-player-row][data-active="true"] [data-player-title] {
-  color: #fff;
-  font-weight: 600;
-}
-          `}
-        </style>
-        <ul class="my-6 space-y-3 mb-52 px-3 ">
-          {album.chapters.map((ch, i) => (
-            <li
-              class="flex items-center justify-between rounded-lg bg-white/6 hover:bg-white/8 transition"
-              data-player-row
-              data-player-album={album.id}
-              data-player-chap={i}
-            >
-              <div class="flex items-center gap-3 w-full">
-                {/* <img src={album.cover} alt="cover" class="w-12 h-12 rounded-md object-cover" /> */}
-                <div class="flex-1">
-                  <div
-                    class="text-sm text-white/70 transition-colors"
-                    data-player-title
-                    data-player-album={album.id}
-                    data-player-chap={i}
-                  >
-                    {ch.title}
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-              {/* <div class="text-xs text-white/60">{ch.duration}</div> */}
-              <button 
-                type="button" 
-                data-player-album={album.id} 
-                data-player-chap={i} 
-                data-player-expand="false" 
-                class="p-2 rounded-full bg-white/5 hover:bg-white/7 js-player-btn" 
-                aria-label={`Play ${ch.title}`}
-                onclick={`console.log("Button clicked, checking playerPlay:", typeof window.playerPlay); if(window.playerPlay){window.playerPlay({bookId:"${album.id}",chapIndex:${i},play:true,expand:false});}else{console.error("playerPlay not available, window keys:", Object.keys(window).filter(k => k.includes("player")));}`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-white">
-                  <path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" />
-                </svg>
-              </button>
-              <button 
-                type="button" 
-                class="p-2 js-like-btn" 
-                data-album-id={album.id} 
-                data-chap-id={ch.id} 
-                data-liked={ch.liked ? "true" : "false"}
-                aria-label="Like"
-              >
-                <svg class="w-5 h-5 empty-heart stroke-white/50 hover:stroke-white fill-none stroke-2 pointer-events-none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-                <svg class="w-5 h-5 filled-heart text-[#1db954] hidden pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path>
-                </svg>
-              </button>
+        <!-- Sticky Actions Bar -->
+        <div class="sticky top-[64px] z-30 flex items-center justify-between py-4 -mx-6 px-6 mb-4">
+          <div class="flex items-center gap-6 md:gap-8">
+            <PlayButton 
+              bookId={album.id.toString()}
+              chapIndex={0}
+              class="w-14 h-14 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl hover:scale-105 active:scale-95 transition-all"
+              svgClass="w-8 h-8 ml-1"
+            />
+            <button class="text-white/70 hover:text-white transition-colors" aria-label="Shuffle">
+              <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5m-4.22 8.78l4.22 4.22M1 21s4.5-4.5 5.78-5.78M21 3L1 21M21 21h-5v-5M1 3s4.5 4.5 5.78 5.78"/></svg>
+            </button>
+            <button class="text-white/70 hover:text-white transition-colors" aria-label="Favorite Album">
+              <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </button>
+            <button class="text-white/70 hover:text-white transition-colors" aria-label="More Options">
+               <svg class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            </button>
+          </div>
+          
+          <div class="hidden md:flex items-center gap-4 text-white/70">
+            <button class="p-2 hover:bg-white/10 rounded-full transition"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></button>
+            <div class="text-sm font-semibold flex items-center gap-2 cursor-pointer hover:text-white">
+              Custom order 
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
             </div>
-          </li>
-          ))}
-        </ul>
-        <script>
-          {`(() => {
-  function applyState(detail) {
-    const titles = document.querySelectorAll('[data-player-title]');
-    titles.forEach((title) => {
-      const albumId = title.getAttribute('data-player-album');
-      const chapIndex = Number(title.getAttribute('data-player-chap'));
-      const isMatch = detail
-        && detail.bookId === albumId
-        && Number(detail.chapIndex) === chapIndex
-        && detail.isPlaying !== false;
-      const row = title.closest('[data-player-row]');
-      if (isMatch) {
-        title.setAttribute('data-active', 'true');
-        if (row) row.setAttribute('data-active', 'true');
-      } else {
-        title.removeAttribute('data-active');
-        if (row) row.removeAttribute('data-active');
-      }
-    });
-  }
+          </div>
+        </div>
 
-  function initLikes() {
-    document.querySelectorAll('.js-like-btn').forEach(btn => {
-      const albumId = btn.getAttribute('data-album-id');
-      const chapId = btn.getAttribute('data-chap-id');
-      // Read actual state from local storage or fallback to dataset
-      const saved = localStorage.getItem('liked:' + albumId + ':' + chapId);
-      const isLiked = saved !== null ? saved === 'true' : btn.getAttribute('data-liked') === 'true';
-      
-      const empty = btn.querySelector('.empty-heart');
-      const filled = btn.querySelector('.filled-heart');
-      
-      if (isLiked) {
-        empty.classList.add('hidden');
-        filled.classList.remove('hidden');
-      } else {
-        empty.classList.remove('hidden');
-        filled.classList.add('hidden');
-      }
+        <!-- Track Table -->
+        <div class="mb-52">
+          <!-- Table Header -->
+          <TrackTableHeader className="mb-4" />
 
-      // attach listener once
-      if(!btn.dataset.initialized) {
-        btn.dataset.initialized = 'true';
-        btn.addEventListener('click', (e) => {
-           e.stopPropagation();
-           const currentlyLiked = !empty.classList.contains('hidden') ? false : true;
-           const newLiked = !currentlyLiked;
-           localStorage.setItem('liked:' + albumId + ':' + chapId, newLiked ? 'true' : 'false');
-           if (newLiked) {
-             empty.classList.add('hidden');
-             filled.classList.remove('hidden');
-           } else {
-             empty.classList.remove('hidden');
-             filled.classList.add('hidden');
-           }
-           window.dispatchEvent(new CustomEvent('player:like-sync'));
-        });
-      }
-    });
-  }
-
-  initLikes();
-  window.addEventListener('player:like-sync', initLikes);
-  window.addEventListener('player:now-playing', (ev) => applyState(ev.detail));
-  try {
-    if (window.__playerNowPlaying) {
-      applyState(window.__playerNowPlaying);
-      return;
-    }
-  } catch (e) {}
-  try {
-    const raw = localStorage.getItem('player:state');
-    if (raw) {
-      const state = JSON.parse(raw);
-      applyState({ bookId: state.bookId, chapIndex: state.chapIndex, isPlaying: state.isPlaying });
-    }
-  } catch (e) {}
-})();`}
-        </script>
-    ) : (
-      <div class="text-center text-white/80 py-20">
-        <h2 class="text-2xl font-bold mb-2">Album not found</h2>
-        <p>Please check the URL or go back to the album list.</p>
+          <!-- Track List -->
+          <div class="space-y-1">
+            {chapters.map((ch, i) => (
+              <TrackRow album={album} track={ch} index={i} />
+            ))}
+          </div>
+        </div>
       </div>
-    )}
-  </section>
+    </div>
+  ) : (
+    <div class="text-center text-white/80 py-20 px-6">
+      <h2 class="text-2xl font-bold mb-2">Album not found</h2>
+      <p>Please check the URL or go back to the album list.</p>
+    </div>
+  )}
+
+  <style is:global>
+    [data-player-row][data-active="true"] {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    [data-player-row][data-active="true"] [data-player-title] {
+      color: #1db954;
+    }
+    [data-player-row][data-active="true"] [data-index-label] {
+      color: #1db954;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+
 </Layout>
 

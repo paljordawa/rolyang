@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useStore } from '@nanostores/react';
+import { $isPlaying, $currentTrack, $isExpanded, $likedTracks, toggleLike as storeToggleLike } from '../store/playerStore';
 export default function Player({ books: albums = [], startBookId: startAlbumId = null, startChapIndex = 0 }) {
   const audioRef = useRef(null);
   const [albumIdx, setAlbumIdx] = useState(() => {
+    if (!Array.isArray(albums)) return 0;
     const idx = albums.findIndex(b => b.id === startAlbumId);
     return idx >= 0 ? idx : 0;
   });
@@ -17,6 +20,7 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
   const [volume, setVolume] = useState(1);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState(false);
+  const lastCountedTrackIdRef = useRef(null);
 
   const handlePrevious = () => {
     if (current > 3 || chapIdx === 0) {
@@ -269,11 +273,16 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
       setIsLiked(savedLiked !== null ? savedLiked === 'true' : chap.liked === true);
     };
 
+    const handleGlobalKeydown = (e) => {
+      // Space to play/pause (only if not typing in an input)
+      if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        setIsPlaying(p => !p);
+      }
+    };
+
     window.addEventListener('player:like-sync', handleLikeSync);
-    window.addEventListener('player:play', onPlayReq);
     window.addEventListener('keydown', handleGlobalKeydown);
-    window.addEventListener('player:expanded', onExpandReq);
-    window.addEventListener('player:collapsed', onCollapseReq);
     
     audio.addEventListener('loadedmetadata', onLoaded);
     audio.addEventListener('timeupdate', onTime);
@@ -284,10 +293,7 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     
     return () => {
       window.removeEventListener('player:like-sync', handleLikeSync);
-      window.removeEventListener('player:play', onPlayReq);
       window.removeEventListener('keydown', handleGlobalKeydown);
-      window.removeEventListener('player:expanded', onExpandReq);
-      window.removeEventListener('player:collapsed', onCollapseReq);
       try { audio?.removeEventListener('loadedmetadata', onLoaded); } catch (e) {}
       try { audio?.removeEventListener('timeupdate', onTime); } catch (e) {}
       try { audio?.removeEventListener('ended', onEnd); } catch (e) {}
@@ -339,18 +345,75 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     };
   }, [albumIdx, chapIdx, albums]);
 
-  // media session
+  // Media Session API Integration
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
-    const b = albums[albumIdx]; const c = b?.chapters[chapIdx]; if (!b || !c) return;
-    navigator.mediaSession.metadata = new window.MediaMetadata({ title: c.title, artist: b.author, album: b.title, artwork: [{ src: b.cover, sizes: '512x512', type: 'image/png' }] });
-    navigator.mediaSession.setActionHandler('play', async () => { await audioRef.current?.play(); setIsPlaying(true); });
-    navigator.mediaSession.setActionHandler('pause', () => { audioRef.current?.pause(); setIsPlaying(false); });
-    navigator.mediaSession.setActionHandler('previoustrack', () => { if (chapIdx > 0) setChapIdx(ci => ci - 1); });
-    navigator.mediaSession.setActionHandler('nexttrack', () => { if (chapIdx < b.chapters.length - 1) setChapIdx(ci => ci + 1); });
-    navigator.mediaSession.setActionHandler('seekto', (details) => { if (!audioRef.current) return; if (details.fastSeek && 'fastSeek' in audioRef.current) audioRef.current.fastSeek(details.seekTime); else audioRef.current.currentTime = details.seekTime; });
-    return () => { try { navigator.mediaSession.setActionHandler('play', null); navigator.mediaSession.setActionHandler('pause', null); } catch (e) { } };
-  }, [albumIdx, chapIdx, albums]);
+    const album = albums[albumIdx];
+    const chap = album?.chapters?.[chapIdx];
+    if (!album || !chap) return;
+
+    // Set metadata
+    navigator.mediaSession.metadata = new window.MediaMetadata({
+      title: chap.title || 'Unknown Title',
+      artist: album.artist || album.author || 'Unknown Artist',
+      album: album.title || 'Unknown Album',
+      artwork: [
+        { src: album.cover, sizes: '96x96', type: 'image/jpeg' },
+        { src: album.cover, sizes: '128x128', type: 'image/jpeg' },
+        { src: album.cover, sizes: '192x192', type: 'image/jpeg' },
+        { src: album.cover, sizes: '256x256', type: 'image/jpeg' },
+        { src: album.cover, sizes: '384x384', type: 'image/jpeg' },
+        { src: album.cover, sizes: '512x512', type: 'image/jpeg' },
+      ]
+    });
+
+    // Update playback state
+    navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+
+    // Set position state for lock screen progress
+    if ('setPositionState' in navigator.mediaSession) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: duration || 0,
+          playbackRate: speed || 1,
+          position: current || 0
+        });
+      } catch (e) {
+        console.warn('Error setting position state:', e);
+      }
+    }
+
+    // Action handlers
+    navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
+    navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+    navigator.mediaSession.setActionHandler('previoustrack', handlePrevious);
+    navigator.mediaSession.setActionHandler('nexttrack', handleNext);
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = details.seekTime;
+        setCurrent(details.seekTime);
+      }
+    });
+    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+      const skipTime = details.seekOffset || 10;
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - skipTime);
+      }
+    });
+    navigator.mediaSession.setActionHandler('seekforward', (details) => {
+      const skipTime = details.seekOffset || 10;
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + skipTime);
+      }
+    });
+
+    return () => {
+      const actions = ['play', 'pause', 'previoustrack', 'nexttrack', 'seekto', 'seekbackward', 'seekforward'];
+      actions.forEach(action => {
+        try { navigator.mediaSession.setActionHandler(action, null); } catch (e) {}
+      });
+    };
+  }, [albumIdx, chapIdx, albums, isPlaying, duration, current, speed]);
 
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
@@ -423,10 +486,17 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     const chap = album?.chapters[chapIdx];
     if (!album || !chap) return;
 
-    const newLiked = !isLiked;
-    setIsLiked(newLiked);
-    localStorage.setItem(`liked:${album.id}:${chap.id}`, newLiked ? 'true' : 'false');
-    window.dispatchEvent(new CustomEvent('player:like-sync'));
+    // Use central store logic
+    storeToggleLike(album.id, chap.id);
+
+    // Add temporary scale animation for tactile feedback
+    if (e.currentTarget) {
+      const btn = e.currentTarget;
+      btn.style.transform = 'scale(1.2)';
+      setTimeout(() => {
+        btn.style.transform = 'scale(1)';
+      }, 150);
+    }
   };
 
   useEffect(() => {
@@ -437,52 +507,60 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
       const savedLiked = localStorage.getItem(`liked:${album.id}:${chap.id}`);
       setIsLiked(savedLiked !== null ? savedLiked === 'true' : chap.liked === true);
     };
-    window.addEventListener('player:like-sync', handleLikeSync);
-    return () => window.removeEventListener('player:like-sync', handleLikeSync);
-  }, [albumIdx, chapIdx, albums]);
 
-  useEffect(() => {
-    if ('mediaSession' in navigator) {
+    // Sync with Nanostores
+    const unsubPlaying = $isPlaying.subscribe((p) => {
+      if (p !== isPlaying) setIsPlaying(p);
+    });
+    const unsubTrack = $currentTrack.subscribe((t) => {
+      if (!t.bookId) return;
+      const idx = albums.findIndex(b => b.id === t.bookId);
+      if (idx >= 0) {
+        setAlbumIdx(idx);
+        if (typeof t.chapIndex === 'number') setChapIdx(t.chapIndex);
+        setExpanded(true);
+        setIsPlaying(true);
+      }
+    });
+
+    const unsubLikes = $likedTracks.subscribe((likes) => {
       const album = albums[albumIdx];
       const chap = album?.chapters[chapIdx];
       if (album && chap) {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: chap.title || 'Unknown Title',
-          artist: album.artist || 'Unknown Artist',
-          album: album.title || 'Unknown Album',
-          artwork: [
-            { src: album.cover, sizes: '96x96', type: 'image/jpeg' },
-            { src: album.cover, sizes: '128x128', type: 'image/jpeg' },
-            { src: album.cover, sizes: '192x192', type: 'image/jpeg' },
-            { src: album.cover, sizes: '256x256', type: 'image/jpeg' },
-            { src: album.cover, sizes: '384x384', type: 'image/jpeg' },
-            { src: album.cover, sizes: '512x512', type: 'image/jpeg' },
-          ]
-        });
+        const key = `${album.id}:${chap.id}`;
+        setIsLiked(!!likes[key]);
+      }
+    });
 
-        navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
-        navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
-        navigator.mediaSession.setActionHandler('previoustrack', handlePrevious);
-        navigator.mediaSession.setActionHandler('nexttrack', handleNext);
-        navigator.mediaSession.setActionHandler('seekto', (details) => {
-          if (details.fastSeek && audioRef.current && 'fastSeek' in audioRef.current) {
-            audioRef.current.fastSeek(details.seekTime);
-            return;
-          }
-          if (audioRef.current) {
-            audioRef.current.currentTime = details.seekTime;
-            setCurrent(details.seekTime);
-          }
-        });
+    const unsubExpanded = $isExpanded.subscribe((e) => {
+      if (e !== expanded) setExpanded(e);
+    });
+
+    return () => {
+      unsubPlaying();
+      unsubTrack();
+      unsubLikes();
+      unsubExpanded();
+    };
+  }, [albumIdx, chapIdx, albums, speed, isPlaying]);
+
+  // Track Play Count
+  useEffect(() => {
+    if (isPlaying) {
+      const album = albums[albumIdx];
+      const chap = album?.chapters?.[chapIdx];
+      if (chap && chap.id && chap.id !== lastCountedTrackIdRef.current) {
+        lastCountedTrackIdRef.current = chap.id;
+        fetch('/api/library/play', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackId: chap.id })
+        }).catch(err => console.error('Failed to increment play count:', err));
       }
     }
-  }, [albumIdx, chapIdx, albums]);
+  }, [isPlaying, albumIdx, chapIdx, albums]);
 
-  useEffect(() => {
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
-    }
-  }, [isPlaying]);
+  // (Redundant Media Session blocks removed)
 
   function cycleSpeed() {
     const i = speedOptions.indexOf(speed);
@@ -502,80 +580,7 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     setExpanded(true);
   }, [startAlbumId, startChapIndex, albums]);
 
-  // react to data-player-* buttons wired through app-client.js
-  useEffect(() => {
-    function onPlayerPlay(ev) {
-      try {
-        const detail = (ev && ev.detail) || {};
-        console.log('Player received play event:', detail);
-        if (!detail.bookId) {
-          console.warn('Player play event missing bookId');
-          return;
-        }
-        const idx = albums.findIndex((b) => b.id === detail.bookId);
-        if (idx < 0) {
-          console.warn('Album not found:', detail.bookId);
-          return;
-        }
-        console.log('Setting album index:', idx);
-        setAlbumIdx(idx);
-        if (typeof detail.chapIndex === 'number') {
-          const chapters = albums[idx]?.chapters || [];
-          const rawIndex = Number(detail.chapIndex);
-          if (Number.isFinite(rawIndex)) {
-            const maxIdx = Math.max(0, (chapters.length || 1) - 1);
-            const clamped = Math.min(Math.max(0, Math.trunc(rawIndex)), maxIdx);
-            console.log('Setting chapter index:', clamped);
-            setChapIdx(clamped);
-          }
-        }
-        setExpanded(detail.expand !== false);
-        
-        // Set playing state and ensure audio starts
-        const shouldPlay = detail.play !== false;
-        setIsPlaying(shouldPlay);
-        
-        // If we should play, ensure audio starts after source is set
-        if (shouldPlay) {
-          // Use a small delay to ensure state updates have propagated
-          setTimeout(() => {
-            const audio = audioRef.current;
-            if (audio && audio.src) {
-              // If audio is ready, play immediately
-              if (audio.readyState >= 2) {
-                audio.play().catch(e => {
-                  console.warn('Immediate play failed, will retry:', e);
-                  // Retry when audio is ready
-                  const retryPlay = () => {
-                    audio.play().catch(e2 => console.warn('Retry play failed:', e2));
-                    audio.removeEventListener('canplay', retryPlay);
-                  };
-                  audio.addEventListener('canplay', retryPlay);
-                });
-              } else {
-                // Wait for audio to be ready
-                const startPlay = () => {
-                  audio.play().catch(e => console.warn('Play failed:', e));
-                  audio.removeEventListener('canplay', startPlay);
-                };
-                audio.addEventListener('canplay', startPlay);
-              }
-            }
-          }, 50);
-        }
-        
-        console.log('Player state updated - playing:', shouldPlay);
-      } catch (e) {
-        console.error('Player play handler error:', e);
-      }
-    }
-    console.log('Player: Setting up player:play listener');
-    window.addEventListener('player:play', onPlayerPlay);
-    return () => {
-      console.log('Player: Removing player:play listener');
-      window.removeEventListener('player:play', onPlayerPlay);
-    };
-  }, [albums]);
+  // (Legacy window:player:play listener removed in favor of Nanostores)
 
   useEffect(() => {
     try {
@@ -687,76 +692,7 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
     } catch (e) { console.warn('Share failed', e); }
   }
 
-  // progress bar interaction for the fullscreen overlay
-  function onProgressClick(e) {
-    try {
-      const bar = e.currentTarget;
-      const rect = bar.getBoundingClientRect();
-      const x = (e.clientX || 0) - rect.left;
-      const pct = Math.max(0, Math.min(1, x / rect.width));
-      const newTime = (duration || 0) * pct;
-      if (audioRef.current) audioRef.current.currentTime = newTime;
-      setCurrent(newTime);
-    } catch (err) { }
-  }
-
-  function onProgressKeyDown(e) {
-    try {
-      if (!audioRef.current) return;
-      const key = e.key;
-      let delta = 0;
-      if (key === 'ArrowLeft') delta = -5;
-      else if (key === 'ArrowRight') delta = 5;
-      else if (key === 'Home') { audioRef.current.currentTime = 0; setCurrent(0); return; }
-      else if (key === 'End') { audioRef.current.currentTime = duration || 0; setCurrent(duration || 0); return; }
-      if (delta !== 0) {
-        const next = Math.max(0, Math.min(duration || 0, (audioRef.current.currentTime || 0) + delta));
-        audioRef.current.currentTime = next; setCurrent(next);
-        e.preventDefault();
-      }
-    } catch (e) {}
-  }
-
-  // pointer drag helpers (shared by both bars)
-  function startPointerDrag(e) {
-    try {
-      // capture the bar element that was pressed
-      const bar = e.currentTarget;
-      draggingBarRef.current = bar;
-      setIsSeeking(true);
-      // update immediately
-      onDragEvent(e);
-      // attach listeners on document so dragging continues outside the bar
-      window.addEventListener('pointermove', onDragEvent);
-      window.addEventListener('pointerup', endPointerDrag);
-      window.addEventListener('pointercancel', endPointerDrag);
-      // prevent native drag behavior
-      e.preventDefault && e.preventDefault();
-    } catch (err) {}
-  }
-
-  function onDragEvent(e) {
-    try {
-      const bar = draggingBarRef.current;
-      if (!bar) return;
-      const rect = bar.getBoundingClientRect();
-      const x = (e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX) || 0) - rect.left;
-      const pct = Math.max(0, Math.min(1, x / rect.width));
-      const newTime = (duration || 0) * pct;
-      if (audioRef.current) audioRef.current.currentTime = newTime;
-      setCurrent(newTime);
-    } catch (err) {}
-  }
-
-  function endPointerDrag() {
-    try {
-      draggingBarRef.current = null;
-      setIsSeeking(false);
-      window.removeEventListener('pointermove', onDragEvent);
-      window.removeEventListener('pointerup', endPointerDrag);
-      window.removeEventListener('pointercancel', endPointerDrag);
-    } catch (e) {}
-  }
+  // (Redundant drag and progress functions removed)
 
   // download helper
   async function downloadCurrent() {
@@ -841,15 +777,16 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
           {/* Progress bar inside controls (desktop) */}
           <div className="w-full flex items-center gap-2 max-w-md mt-1">
             <span className="text-[11px] text-white/70 min-w-[32px] text-right font-medium">{formatTime(current)}</span>
-            <div
-              role="slider" aria-valuenow={Math.floor(current || 0)} aria-valuemin={0} aria-valuemax={Math.floor(duration || 0)} aria-label="Playback position" tabIndex={0} onKeyDown={onProgressKeyDown}
-              className="relative flex-1 h-1.5 bg-white/20 rounded-full cursor-pointer group"
-              onClick={onProgressClick} onPointerDown={startPointerDrag}
-            >
-              <div className="h-full bg-white group-hover:bg-[#1db954] rounded-full relative" style={{ width: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%` }}>
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow"></div>
-              </div>
-            </div>
+            <input 
+              type="range"
+              min="0"
+              max={duration || 0}
+              value={current || 0}
+              onChange={(e) => seekTo(e.target.value)}
+              className="player-range flex-1 h-1 bg-transparent"
+              style={{ '--progress-pct': `${duration ? (current / duration) * 100 : 0}%` }}
+              aria-label="Playback position"
+            />
             <span className="text-[11px] text-white/70 min-w-[32px] text-left font-medium">{formatTime(duration)}</span>
           </div>
         </div>
@@ -870,19 +807,21 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
                 )}
              </button>
-             <div 
-                className="relative flex-1 h-1.5 bg-white/20 rounded-full cursor-pointer group"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                  setVolume(p);
-                  if (audioRef.current) audioRef.current.volume = p;
+             <input 
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={volume}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  setVolume(v);
+                  if (audioRef.current) audioRef.current.volume = v;
                 }}
-             >
-               <div className="h-full bg-white group-hover:bg-[#1db954] rounded-full relative" style={{ width: `${volume * 100}%` }}>
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow"></div>
-               </div>
-             </div>
+                className="player-range flex-1 h-1 bg-transparent"
+                style={{ '--progress-pct': `${volume * 100}%` }}
+                aria-label="Volume"
+             />
           </div>
         </div>
 
@@ -901,8 +840,11 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
         </div>
 
         {/* Mobile progress bar along bottom edge */}
-        <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-white/20 rounded-full overflow-hidden md:hidden">
-            <div className="h-full bg-white rounded-full" style={{ width: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%` }}></div>
+        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/10 md:hidden">
+            <div 
+              className="h-full bg-white transition-all duration-300" 
+              style={{ width: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%` }}
+            ></div>
         </div>
       </div>
     );
@@ -950,15 +892,16 @@ export default function Player({ books: albums = [], startBookId: startAlbumId =
 
           {/* Progress Slider */}
           <div className="w-full mb-8">
-              <div
-                role="slider" aria-valuenow={Math.floor(current || 0)} aria-valuemin={0} aria-valuemax={Math.floor(duration || 0)} aria-label="Playback position" tabIndex={0} onKeyDown={onProgressKeyDown}
-                className="relative h-1.5 w-full bg-white/20 rounded-full cursor-pointer group mb-3"
-                onClick={onProgressClick} onPointerDown={startPointerDrag}
-              >
-                 <div className="h-full bg-white rounded-full relative" style={{ width: `${duration ? Math.max(0, Math.min(100, (current / duration) * 100)) : 0}%` }}>
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 bg-white rounded-full shadow"></div>
-                 </div>
-              </div>
+              <input 
+                type="range"
+                min="0"
+                max={duration || 0}
+                value={current || 0}
+                onChange={(e) => seekTo(e.target.value)}
+                className="player-range w-full h-1.5 bg-transparent mb-3"
+                style={{ '--progress-pct': `${duration ? (current / duration) * 100 : 0}%` }}
+                aria-label="Playback position"
+              />
               <div className="flex justify-between text-[11px] text-white/70 font-semibold opacity-90">
                  <span>{formatTime(current)}</span>
                  <span>{formatTime(duration)}</span>

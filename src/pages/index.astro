@@ -1,6 +1,13 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import albums from '../data/data.json';
+import { client } from '../lib/db';
+import SkeletonAlbum from '../components/SkeletonAlbum.astro';
+import AlbumCard from '../components/AlbumCard.astro';
+import LikeButton from '../components/LikeButton.astro';
+import PlayButton from '../components/PlayButton.astro';
+
+const albumsResult = await client.execute("SELECT * FROM albums LIMIT 12");
+const albums = albumsResult.rows;
 
 const time = new Date().getHours();
 let greeting = 'Good evening';
@@ -17,20 +24,20 @@ else if (time < 18) greeting = 'Good afternoon';
     <!-- Top Grid (6 items) -->
     <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-10">
       {[...albums, ...albums].slice(0,6).map(album => (
-        <div 
+        <a 
+          href={`/album/${album.id as string}`}
           class="flex items-center bg-white/5 hover:bg-white/20 transition-colors rounded-md overflow-hidden group cursor-pointer" 
-          data-player-album={album.id} 
-          data-player-chap={0} 
-          data-player-expand="false"
         >
-          <img src={album.cover} alt={album.title} class="w-14 h-14 object-cover shadow-[0_4px_10px_rgba(0,0,0,0.3)]" />
+          <img src={album.cover as string} alt={album.title as string} class="w-14 h-14 object-cover shadow-[0_4px_10px_rgba(0,0,0,0.3)]" />
           <div class="px-3 flex-1 font-bold text-sm truncate text-white">{album.title}</div>
-          <div class="pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button class="w-10 h-10 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-[0_8px_8px_rgba(0,0,0,0.3)] hover:scale-105 hover:bg-[#1ed760] transition-all" aria-label={`Play ${album.title}`}>
-              <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
-            </button>
+          <div class="pr-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+            <PlayButton 
+              bookId={album.id ? album.id.toString() : ""} 
+              chapIndex={0} 
+              class="w-10 h-10 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-[0_8px_8px_rgba(0,0,0,0.3)] hover:scale-105 hover:bg-[#1ed760] transition-all" 
+            />
           </div>
-        </div>
+        </a>
       ))}
     </div>
 
@@ -40,25 +47,21 @@ else if (time < 18) greeting = 'Good afternoon';
         <h2 class="font-bold text-2xl hover:underline cursor-pointer text-white">Made for you</h2>
         <a href="/library" class="text-sm text-white/70 font-semibold hover:underline">Show all</a>
       </div>
-      <div class="flex gap-5 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
-        {albums.map(album => (
-          <div 
-            class="w-36 md:w-44 flex-shrink-0 relative group p-3 bg-[#181818] rounded-md hover:bg-[#282828] transition-colors cursor-pointer" 
-            data-player-album={album.id} 
-            data-player-chap={0} 
-            data-player-expand="false"
-          >
-            <div class="w-full rounded-md overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.5)] mb-4 relative aspect-square">
-              <img src={album.cover} alt={album.title} class="w-full h-full object-cover" />
-              <button class="absolute right-2 bottom-2 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black hover:bg-[#1ed760] transition-all play-btn-overlay" aria-label={`Play ${album.title}`}>
-                <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
-              </button>
-            </div>
-            <div class="text-[15px] font-bold truncate text-white mb-1">{album.title}</div>
-            <div class="text-sm text-white/70 line-clamp-2 leading-tight">By {album.artist}</div>
-          </div>
+      {albums.length === 0 ? (
+      <SkeletonAlbum count={6} />
+    ) : (
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+        {albums.map((album) => (
+          <AlbumCard 
+            id={album.id as string} 
+            title={album.title as string} 
+            artist={album.artist as string} 
+            cover={album.cover as string} 
+            width="auto"
+          />
         ))}
       </div>
+    )}
     </section>
 
     <!-- Recently Played Row -->
@@ -69,21 +72,14 @@ else if (time < 18) greeting = 'Good afternoon';
       </div>
       <div class="flex gap-5 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
         {[...albums].reverse().map(album => (
-          <div 
-            class="w-36 md:w-44 flex-shrink-0 relative group p-3 bg-[#181818] rounded-md hover:bg-[#282828] transition-colors cursor-pointer" 
-            data-player-album={album.id} 
-            data-player-chap={0} 
-            data-player-expand="false"
-          >
-            <div class="w-full rounded-md overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.5)] mb-4 relative aspect-square">
-              <img src={album.cover} alt={album.title} class="w-full h-full object-cover" />
-              <button class="absolute right-2 bottom-2 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black hover:bg-[#1ed760] transition-all play-btn-overlay" aria-label={`Play ${album.title}`}>
-                <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
-              </button>
-            </div>
-            <div class="text-[15px] font-bold truncate text-white mb-1">{album.title}</div>
-            <div class="text-sm text-white/70 line-clamp-2 leading-tight">By {album.artist}</div>
-          </div>
+          <AlbumCard 
+            id={album.id as string} 
+            title={album.title as string} 
+            artist={album.artist as string} 
+            cover={album.cover as string} 
+            width="fixed"
+            showLike={true}
+          />
         ))}
       </div>
     </section>

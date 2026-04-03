@@ -1,0 +1,156 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { client } from '../../lib/db';
+
+const { name } = Astro.params;
+const artistName = decodeURIComponent(name || "");
+
+// Fetch all albums by this artist
+const artistAlbumsResult = await client.execute({
+  sql: "SELECT * FROM albums WHERE artist = ? ORDER BY id DESC",
+  args: [artistName]
+});
+const albums = artistAlbumsResult.rows as any[];
+
+// Fetch all tracks for these albums to show a "Popular Songs" section
+const allTracks: any[] = [];
+if (albums.length > 0) {
+  const albumIds = albums.map(a => a.id);
+  const placeholders = albumIds.map(() => "?").join(",");
+  const tracksResult = await client.execute({
+    sql: `SELECT * FROM (
+            SELECT t.*, a.title as albumTitle, a.cover as albumCover,
+            (ROW_NUMBER() OVER (PARTITION BY t.album_id ORDER BY t.id) - 1) as trackIndex
+            FROM tracks t 
+            JOIN albums a ON t.album_id = a.id 
+            WHERE t.album_id IN (${placeholders})
+          ) ORDER BY trackIndex ASC, id ASC`,
+    args: albumIds
+  });
+  allTracks.push(...tracksResult.rows);
+}
+
+const featuredAlbum = albums[0] || { cover: "" };
+---
+
+<Layout title={`${artistName} - Artist`} hideNavBack={false}>
+  <div class="relative min-h-screen">
+    <!-- Immersive Header Background -->
+    <div 
+      class="absolute top-0 left-0 right-0 h-[400px] -z-10 blur-[80px] opacity-30"
+      style={`background-image: url(${featuredAlbum.cover}); background-size: cover; background-position: center;`}
+    ></div>
+    <div class="absolute top-0 left-0 right-0 h-[400px] -z-20 bg-gradient-to-b from-white/10 to-transparent"></div>
+
+    <div class="pt-24 px-6 md:px-8 pb-8">
+      <!-- Artist Hero -->
+      <div class="flex flex-col gap-2 mb-12">
+        <div class="flex items-center gap-2 text-[#4cb3ff]">
+           <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm6 10a1 1 0 0 0 1-1 7 7 0 0 0-14 0 1 1 0 0 0 1 1z"/></svg>
+           <span class="text-xs font-bold uppercase tracking-widest">Verified Artist</span>
+        </div>
+        <h1 class="text-5xl md:text-8xl font-black text-white tracking-tighter leading-tight drop-shadow-2xl">
+          {artistName}
+        </h1>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-6 mb-12">
+        <button 
+          class="w-14 h-14 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl hover:scale-105 active:scale-95 transition-all"
+          onclick={`if(window.playerPlay && ${allTracks.length > 0}){window.playerPlay({bookId:"${allTracks[0].album_id}",chapIndex:0,play:true});}`}
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+        </button>
+        <button 
+          class="js-follow-btn px-8 py-2.5 rounded-full border border-white/30 text-white text-sm font-bold hover:scale-105 active:scale-95 transition-all"
+          data-artist-name={artistName}
+        >
+          Follow
+        </button>
+        <button class="text-white/70 hover:text-white transition-colors">
+          <svg class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+        </button>
+      </div>
+
+      <!-- Popular Songs -->
+      <div class="mb-12">
+        <h2 class="text-2xl font-bold text-white mb-6">Popular</h2>
+        <div class="space-y-1">
+          {allTracks.slice(0, 5).map((track, i) => (
+            <div 
+              class="grid grid-cols-[16px_4fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 rounded-md transition-colors hover:bg-white/10 group cursor-default items-center"
+              data-player-row
+              data-player-album={track.album_id}
+              data-player-chap={i}
+            >
+              <div class="flex items-center justify-center relative">
+                <span class="text-sm font-medium text-white/50 group-hover:opacity-0">{i + 1}</span>
+                <button 
+                  class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white"
+                  onclick={`if(window.playerPlay){window.playerPlay({bookId:"${track.album_id}",chapIndex:${i},play:true});}`}
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+                </button>
+              </div>
+              <div class="flex items-center gap-3 min-w-0">
+                <img src={track.albumCover} class="w-10 h-10 rounded object-cover shadow-lg" alt="" />
+                <a href={`/song/${track.album_id}-${track.trackIndex}`} class="text-base font-bold text-white truncate hover:underline cursor-pointer block max-w-fit">{track.title}</a>
+              </div>
+              <div class="text-sm text-white/60 truncate hover:underline cursor-pointer" onclick={`window.appNavigate('/album/${track.album_id}')`}>
+                {track.albumTitle}
+              </div>
+              <div class="flex items-center justify-end gap-5 text-white/50 text-sm tabular-nums pr-4">
+                <button 
+                  type="button" 
+                  class="js-add-to-playlist-btn opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 text-white/50 hover:text-white p-1"
+                  data-track-id={track.id}
+                  title="Add to Playlist"
+                >
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                <button 
+                  class="js-like-btn transition-all transform hover:scale-110 active:scale-90 opacity-0 group-hover:opacity-100"
+                  data-album-id={track.album_id}
+                  data-chap-id={track.id}
+                  aria-label="Like track"
+                >
+                  <svg class="empty-heart w-5 h-5 text-white/40 hover:text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  <svg class="filled-heart w-5 h-5 text-[#1db954] hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                </button>
+                <span class="w-10 text-right">{track.duration}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- Albums Grid -->
+      <div>
+        <h2 class="text-2xl font-bold text-white mb-6">Albums</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+          {albums.map(album => (
+            <a 
+              href={`/album/${album.id}`}
+              class="flex flex-col p-4 bg-[#181818] hover:bg-[#282828] transition-all duration-300 rounded-lg group cursor-pointer"
+            >
+              <div class="aspect-square w-full mb-4 relative shadow-[0_8px_24px_rgba(0,0,0,0.5)] rounded-md overflow-hidden">
+                <img src={album.cover} alt={album.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <button 
+                  class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105"
+                  onclick={`event.preventDefault(); if(window.playerPlay){window.playerPlay({bookId:"${album.id}",chapIndex:0,play:true});}`}
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+                </button>
+              </div>
+              <div class="font-bold text-base truncate text-white mb-1">{album.title}</div>
+              <div class="text-sm text-white/70 truncate">{album.artist}</div>
+            </a>
+          ))}
+        </div>
+      </div>
+      
+      <div class="h-32"></div>
+    </div>
+  </div>
+</Layout>

@@ -1,0 +1,99 @@
+---
+import PlayButton from './PlayButton.astro';
+import LikeButton from './LikeButton.astro';
+
+export interface Props {
+  album: any;
+  track: any;
+  index: number;
+}
+const { album, track, index } = Astro.props;
+const trackIndex = index;
+const genre = album.genre || "Electronic";
+---
+<div
+  class="grid grid-cols-[16px_4fr_2fr_2fr_2fr_2fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 rounded-md transition-colors hover:bg-white/10 group cursor-default items-center bg-transparent"
+  data-player-row
+  data-player-album={album.id}
+  data-player-chap={trackIndex}
+>
+  <!-- Index / Play Icon -->
+  <div class="flex items-center justify-center relative">
+    <span class="text-sm font-medium text-white/60 group-hover:opacity-0 transition-opacity" data-index-label>{trackIndex + 1}</span>
+    <PlayButton 
+      bookId={album.id.toString()}
+      chapIndex={trackIndex}
+      class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-white active:scale-95"
+      svgClass="w-4 h-4 text-white"
+    />
+  </div>
+
+  <!-- Title Cell -->
+  <div class="flex items-center gap-3 min-w-0">
+    <div class="w-10 h-10 rounded shrink-0 overflow-hidden bg-white/5">
+      <img src={album.cover} alt="" class="w-full h-full object-cover" />
+    </div>
+    <div class="flex flex-col min-w-0">
+      <a 
+        href={`/song/${album.id}-${trackIndex}`}
+        class="text-base font-bold text-white truncate hover:underline cursor-pointer block max-w-fit"
+        data-player-title
+        data-player-album={album.id}
+        data-player-chap={trackIndex}
+      >
+        {track.title}
+      </a>
+    </div>
+  </div>
+
+  <!-- Artist Cell -->
+  <div class="hidden sm:flex items-center min-w-0">
+    <a href={`/artist/${encodeURIComponent(album.artist)}`} class="text-sm text-white/70 truncate hover:text-white cursor-pointer hover:underline">{album.artist}</a>
+  </div>
+
+  <!-- Album Cell -->
+  <div class="hidden md:flex items-center min-w-0">
+    <a href={`/album/${album.id}`} class="text-sm text-white/70 truncate hover:text-white cursor-pointer hover:underline block">{album.title}</a>
+  </div>
+
+  <!-- Genre Cell -->
+  <div class="hidden lg:flex items-center min-w-0">
+    <span class="text-sm text-white/70 truncate capitalize cursor-pointer hover:text-white hover:underline">{genre}</span>
+  </div>
+
+  <!-- Plays Cell -->
+  <div class="hidden xl:flex items-center justify-end min-w-0 text-sm text-white/70 pr-4 tabular-nums">
+    {(track.play_count || 0).toLocaleString()}
+  </div>
+
+  <!-- Date Added Cell -->
+  <div class="hidden xl:flex items-center min-w-0 text-sm text-white/70 whitespace-nowrap">
+    {track.added_at ? new Date(track.added_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently added'}
+  </div>
+
+  <!-- Duration / Like Cell -->
+  <div class="flex items-center justify-end gap-4 pr-4">
+    <button 
+      type="button" 
+      class="js-add-to-playlist-btn opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 text-white/50 hover:text-white p-1"
+      data-track-id={track.id}
+      title="Add to Playlist"
+    >
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <LikeButton 
+      albumId={album.id.toString()}
+      chapId={track.id.toString()}
+      class="opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
+    />
+    <span class="text-sm text-white/60 tabular-nums w-12 text-right">{track.duration || "0:00"}</span>
+    <button 
+      type="button" 
+      class="js-track-more-btn opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 p-1 hover:text-white text-white/70"
+      data-track-id={track.id}
+      title="More"
+    >
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+    </button>
+  </div>
+</div>

@@ -1,0 +1,218 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+<Layout title="Liked Songs" hideNav>
+  <div class="relative min-h-screen">
+    <!-- Immersive Header Background -->
+    <div class="absolute top-0 left-0 right-0 h-[400px] -z-10 bg-gradient-to-b from-[#450af5] to-[#121212] opacity-40"></div>
+    <div class="absolute top-0 left-0 right-0 h-[400px] -z-20 bg-[#121212]"></div>
+
+    <div class="pt-20 px-6 md:px-8 pb-8">
+      <!-- Hero Header -->
+      <div class="flex flex-col md:flex-row items-end gap-6 md:gap-8 mb-8">
+        <div class="w-48 h-48 md:w-60 md:h-60 shrink-0 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden bg-gradient-to-br from-[#450af5] to-[#8e8ee5] flex items-center justify-center">
+          <svg class="w-24 h-24 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
+        </div>
+        
+        <div class="flex flex-col gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-white/90">Playlist</span>
+          <h1 class="text-4xl md:text-7xl font-black text-white tracking-tighter mb-2 leading-tight">
+            Liked Songs
+          </h1>
+          <div class="flex items-center flex-wrap gap-2 text-sm font-bold text-white">
+            <span class="hover:underline cursor-pointer">User</span>
+            <span class="text-white/60">•</span>
+            <span class="text-white/60 font-medium" id="liked-count">0 songs</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions Bar -->
+      <div class="flex items-center gap-6 md:gap-8 mb-8 pb-4">
+        <button 
+          id="play-all-liked"
+          class="w-14 h-14 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl hover:scale-105 active:scale-95 transition-all"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+        </button>
+      </div>
+
+      <!-- Track Table -->
+      <div class="mb-52">
+        <div class="grid grid-cols-[16px_4fr_2fr_2fr_2fr_2fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 border-b border-white/10 text-white/60 text-sm font-medium uppercase tracking-[0.1em] mb-4 text-left">
+          <div class="text-center">#</div>
+          <div>Title</div>
+          <div class="hidden sm:block">Artist</div>
+          <div class="hidden md:block">Album</div>
+          <div class="hidden lg:block">Genre</div>
+          <div class="hidden xl:block text-right pr-4">Plays</div>
+          <div class="hidden xl:block">Date added</div>
+          <div class="flex justify-end pr-8">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+        </div>
+
+        <div id="liked-tracks-list" class="space-y-1">
+          <!-- Tracks will be injected here -->
+          <div class="py-20 text-center text-white/40 italic">Finding your favorite tracks...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { $likedTracks } from '../../store/playerStore';
+
+  function renderLikedPage() {
+    const container = document.getElementById('liked-tracks-list');
+    const countEl = document.getElementById('liked-count');
+    if (!container) return;
+
+    const allAlbums = (window as any).__libraryData as any[];
+    const likes = $likedTracks.get();
+    const likedTracks: any[] = [];
+
+    allAlbums.forEach(album => {
+      album.chapters.forEach((ch: any, i: number) => {
+        if (likes[`${album.id}:${ch.id}`]) {
+          likedTracks.push({
+            albumId: album.id,
+            albumTitle: album.title,
+            albumArtist: album.artist,
+            albumCover: album.cover,
+            genre: album.genre || 'Electronic',
+            trackId: ch.id,
+            trackIndex: i,
+            title: ch.title,
+            duration: ch.duration,
+            playCount: ch.play_count || 0,
+            addedAt: ch.added_at
+          });
+        }
+      });
+    });
+
+    if (countEl) countEl.textContent = `${likedTracks.length} song${likedTracks.length !== 1 ? 's' : ''}`;
+
+    if (likedTracks.length === 0) {
+      container.innerHTML = `
+        <div class="py-32 flex flex-col items-center justify-center text-center px-4">
+          <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-6 text-white/20">
+             <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          </div>
+          <h2 class="text-2xl font-bold text-white mb-2">Songs you like will appear here</h2>
+          <p class="text-white/60">Save songs by tapping the heart icon.</p>
+          <a href="/search" class="mt-8 px-8 py-3 bg-white text-black font-bold rounded-full hover:scale-105 transition active:scale-95">Find songs</a>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = likedTracks.map((track, i) => `
+      <div 
+        class="grid grid-cols-[16px_4fr_2fr_2fr_2fr_2fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 rounded-md transition-colors hover:bg-white/10 group cursor-default items-center"
+        data-player-row
+        data-player-album="${track.albumId}"
+        data-player-chap="${track.trackIndex}"
+      >
+        <div class="flex items-center justify-center relative">
+          <span class="text-sm font-medium text-white/60 group-hover:opacity-0 transition-opacity">${i + 1}</span>
+          <button 
+            class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-white active:scale-95"
+            aria-label="Play ${track.title}"
+            data-play-at="${track.albumId}:${track.trackIndex}"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded shrink-0 overflow-hidden bg-white/5">
+            <img src="${track.albumCover}" alt="" class="w-full h-full object-cover" />
+          </div>
+          <div class="flex flex-col min-w-0">
+            <a href="/song/${track.albumId}-${track.trackIndex}" class="text-base font-bold text-white truncate hover:underline cursor-pointer block max-w-fit">${track.title}</a>
+          </div>
+        </div>
+
+        <div class="hidden sm:flex items-center min-w-0">
+          <span 
+            class="text-sm text-white/70 truncate hover:text-white cursor-pointer hover:underline"
+            onclick="window.appNavigate('/artist/${encodeURIComponent(track.albumArtist)}')"
+          >${track.albumArtist}</span>
+        </div>
+
+        <div class="hidden md:flex items-center min-w-0">
+          <span class="text-sm text-white/70 truncate hover:text-white cursor-pointer hover:underline">${track.albumTitle}</span>
+        </div>
+
+        <div class="hidden lg:flex items-center min-w-0">
+          <span class="text-sm text-white/70 truncate capitalize cursor-pointer hover:text-white hover:underline">${track.genre}</span>
+        </div>
+
+        <div class="hidden xl:flex items-center justify-end min-w-0 text-sm text-white/70 pr-4 tabular-nums">
+          ${track.playCount.toLocaleString()}
+        </div>
+        
+        <div class="hidden xl:flex items-center min-w-0 text-sm text-white/70 whitespace-nowrap">
+          ${track.addedAt ? new Date(track.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'}
+        </div>
+
+        <div class="flex items-center justify-end gap-4 pr-4">
+           <button 
+             type="button" 
+             class="js-add-to-playlist-btn opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 text-white/50 hover:text-white p-1"
+             data-track-id="${track.trackId}"
+             title="Add to Playlist"
+           >
+             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+           </button>
+           <button class="js-like-btn" data-album-id="${track.albumId}" data-chap-id="${track.trackId}">
+              <svg class="w-4 h-4 filled-heart text-[#1db954]" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
+              <svg class="w-4 h-4 empty-heart text-white/50 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+           </button>
+          <span class="text-sm text-white/60 tabular-nums w-12 text-right">${track.duration}</span>
+          <button 
+            type="button" 
+            class="js-track-more-btn opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 p-1 hover:text-white text-white/70"
+            data-track-id="${track.trackId}"
+            title="More"
+          >
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    // Wire up events
+    container.querySelectorAll('[data-play-at]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const [albumId, index] = btn.getAttribute('data-play-at')!.split(':');
+        // @ts-ignore
+        if (window.playerPlay) window.playerPlay({ bookId: albumId, chapIndex: parseInt(index) });
+      });
+    });
+
+    document.getElementById('play-all-liked')?.addEventListener('click', () => {
+      if (likedTracks.length > 0) {
+        // @ts-ignore
+        if (window.playerPlay) window.playerPlay({ bookId: likedTracks[0].albumId, chapIndex: likedTracks[0].trackIndex });
+      }
+    });
+
+    // Handle heart icon updates
+    $likedTracks.subscribe(newLikes => {
+      // If a song was unliked, we need to refresh the whole page list to remove it
+      // but only if we're still on this page.
+      if (window.location.pathname === '/collection/tracks') {
+        renderLikedPage();
+      }
+    });
+  }
+
+  // Initial render
+  renderLikedPage();
+  
+  // Also handle view transitions
+  document.addEventListener('astro:page-load', renderLikedPage);
+</script>

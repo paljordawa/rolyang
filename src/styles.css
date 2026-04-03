@@ -32,6 +32,31 @@ html, body, #app {
 @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .animate-fade-in { animation: fade-in 380ms ease both; }
 
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+.shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s infinite;
+}
+
 /* Play button hover transition on cards */
 .play-btn-overlay {
   opacity: 0;
@@ -42,4 +67,82 @@ html, body, #app {
 .group:hover .play-btn-overlay {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Custom range input styling (Spotify style) */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+}
+
+input[type="range"]:focus {
+  outline: none;
+}
+
+/* Track */
+input[type="range"]::-webkit-slider-runnable-track {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  height: 4px;
+}
+
+input[type="range"]::-moz-range-track {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  height: 4px;
+}
+
+/* Progress (webkit) */
+input[type="range"]::-webkit-slider-runnable-track {
+  background-image: linear-gradient(var(--progress-color, #fff), var(--progress-color, #fff));
+  background-size: var(--progress-pct, 0%) 100%;
+  background-repeat: no-repeat;
+}
+
+/* Progress (moz) */
+input[type="range"]::-moz-range-progress {
+  background-color: var(--progress-color, #fff);
+  height: 4px;
+  border-radius: 4px;
+}
+
+/* Thumb */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #fff;
+  border-radius: 50%;
+  height: 12px;
+  width: 12px;
+  margin-top: -4px; /* (track-height / 2) - (thumb-height / 2) */
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+input[type="range"]::-moz-range-thumb {
+  background-color: #fff;
+  border: none;
+  border-radius: 50%;
+  height: 12px;
+  width: 12px;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Hover effects */
+.player-range:hover {
+  --progress-color: #1db954;
+}
+
+.player-range:hover::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+.player-range:hover::-moz-range-thumb {
+  opacity: 1;
 }
