@@ -1,5 +1,5 @@
 ---
-import { ViewTransitions } from 'astro:transitions';
+import { ClientRouter } from 'astro:transitions';
 import Player from '../components/Player.jsx';
 import { client } from '../lib/db';
 import "../styles.css"
@@ -97,7 +97,7 @@ const ogImageUrl = siteOrigin ? new URL(ogImagePath, siteOrigin).toString() : og
     <meta name="twitter:description" content={siteDescription} />
     <meta name="twitter:image" content={ogImageUrl} />
     <link rel="stylesheet" href="/src/styles.css" />
-    <ViewTransitions />
+    <ClientRouter />
     <!-- client-only module for navigation and player helpers -->
     <!-- Define playerPlay FIRST, before any other scripts -->
     <script is:inline>
@@ -643,7 +643,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
           }
         });
 
-        // Lifecycle: DOMContentLoaded, Initial run, and Astro ViewTransitions
+        // Lifecycle: DOMContentLoaded, Initial run, and Astro ClientRouter
         document.addEventListener('DOMContentLoaded', () => {
           renderLibrary('playlists');
         });
