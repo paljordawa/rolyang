@@ -1,6 +1,6 @@
 ---
-import PlayButton from './PlayButton.astro';
-import LikeButton from './LikeButton.astro';
+// import PlayButton from './PlayButton.astro';
+// import LikeButton from './LikeButton.astro';
 
 export interface Props {
   id: string | number;
@@ -10,7 +10,7 @@ export interface Props {
   width?: "full" | "auto" | "fixed";
   showLike?: boolean;
 }
-const { id, title, artist, cover, width = "full", showLike = true } = Astro.props;
+const { id, title, artist, cover } = Astro.props;
 ---
 <a 
   href={`/album/${id}`}

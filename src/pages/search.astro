@@ -229,7 +229,7 @@ import Layout from '../layouts/Layout.astro';
   function syncLikedHearts() {
     const likes = $likedTracks.get();
     document.querySelectorAll('.js-like-btn').forEach((btn: any) => {
-      const isLiked = !!likes[`${btn.getAttribute('data-album-id')}:${btn.getAttribute('data-chap-id')}`];
+      const isLiked = !!(likes as any)[`${btn.getAttribute('data-album-id')}:${btn.getAttribute('data-chap-id')}`];
       btn.querySelector('.empty-heart')?.classList.toggle('hidden', isLiked);
       btn.querySelector('.filled-heart')?.classList.toggle('hidden', !isLiked);
     });

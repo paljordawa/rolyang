@@ -1,7 +1,9 @@
 ---
-import { ViewTransitions } from 'astro:transitions';
+// import { ViewTransitions } from 'astro:transitions';
 import Layout from '../../../layouts/Layout.astro';
 import albums from '../../../data/data.json';
+
+export const prerender = true;
 
 export async function getStaticPaths() {
   return albums.flatMap((b) =>
@@ -25,7 +27,7 @@ const chapter = album?.chapters?.[Number(chapterId)];
             <img src={album.cover} alt={album.title} class="w-28 h-28 rounded-lg object-cover shadow-md" />
             <div>
               <div class="text-lg font-semibold">{album.title}</div>
-              <div class="text-sm text-white/70">{album.author}</div>
+              <div class="text-sm text-white/70">{album.artist}</div>
               <div class="mt-2 text-sm text-white/80">{chapter.title}</div>
             </div>
           </div>

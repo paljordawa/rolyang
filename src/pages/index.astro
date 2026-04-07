@@ -4,7 +4,7 @@ import { client } from '../lib/db';
 import SkeletonAlbum from '../components/SkeletonAlbum.astro';
 import AlbumCard from '../components/AlbumCard.astro';
 import CompactAlbumCard from '../components/CompactAlbumCard.astro';
-import LikeButton from '../components/LikeButton.astro';
+// import LikeButton from '../components/LikeButton.astro';
 import PlayButton from '../components/PlayButton.astro';
 
 const albumsResult = await client.execute("SELECT * FROM albums LIMIT 12");
