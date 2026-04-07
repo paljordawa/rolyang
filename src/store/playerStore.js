@@ -95,16 +95,16 @@ export async function hydrateLibrary() {
 
 // Global bridge for plain JS / other components
 if (typeof window !== 'undefined') {
-  window.playerPlay = window.playerPlay || function (payload) {
+  // Remove OR condition to guarantee we use the latest function, bypassing HMR stale closures
+  window.playerPlay = function (payload) {
     try { 
-      console.log('playerPlay called:', payload);
+      console.log('playerPlay called with:', payload);
       // 1. Dispatch event (legacy support)
       window.dispatchEvent(new CustomEvent('player:play', { detail: payload }));
       
       // 2. Direct Nanostore update (new Phase 3 architectural bridge)
-      if (window.__nanostores_player) {
-        window.__nanostores_player.updateTrack(payload.bookId, payload.chapIndex, payload.play !== false);
-      }
+      // Call directly because we are inside playerStore
+      updateTrack(payload.bookId, payload.chapIndex, payload.play !== false);
     } catch (e) { 
       console.error('playerPlay error:', e);
     }
@@ -112,11 +112,10 @@ if (typeof window !== 'undefined') {
 
   window.__nanostores_player = {
     updateTrack: (bookId, chapIndex, shouldPlay = true) => {
-      $currentTrack.set({ bookId, chapIndex });
-      if (shouldPlay) $isPlaying.set(true);
+      updateTrack(bookId, chapIndex, shouldPlay);
     },
     togglePlay: () => {
-      $isPlaying.set(!$isPlaying.get());
+      togglePlay();
     },
     toggleFollow,
     toggleLike,

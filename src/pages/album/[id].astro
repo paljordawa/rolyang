@@ -57,9 +57,9 @@ const totalDurationFormatted = formatTotalDuration(totalDurationSeconds);
       ></div>
       <div class="absolute top-0 left-0 right-0 h-[400px] -z-20 bg-gradient-to-b from-white/10 to-transparent"></div>
 
-      <div class="pt-20 px-6 md:px-8 pb-8">
+      <div class="pt-20 px-2 sm:px-4 md:px-8 pb-8">
         <!-- Hero Header -->
-        <div class="flex flex-col md:flex-row items-end gap-6 md:gap-8 mb-8">
+        <div class="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 mb-8 px-2 sm:px-0">
           <div class="w-48 h-48 md:w-60 md:h-60 shrink-0 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden group relative">
             <img src={album.cover} alt={album.title} class="w-full h-full object-cover" />
             <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -79,8 +79,8 @@ const totalDurationFormatted = formatTotalDuration(totalDurationSeconds);
         </div>
 
         <!-- Sticky Actions Bar -->
-        <div class="sticky top-[64px] z-30 flex items-center justify-between py-4 -mx-6 px-6 mb-4">
-          <div class="flex items-center gap-6 md:gap-8">
+        <div class="sticky top-[64px] z-30 flex items-center justify-between py-4 -mx-2 sm:-mx-4 md:-mx-8 px-4 sm:px-4 md:px-8 mb-4">
+          <div class="flex items-center gap-4 sm:gap-6 md:gap-8">
             <PlayButton 
               bookId={album.id.toString()}
               chapIndex={0}

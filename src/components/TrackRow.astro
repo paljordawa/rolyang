@@ -1,6 +1,6 @@
 ---
-import PlayButton from './PlayButton.astro';
-import LikeButton from './LikeButton.astro';
+import PlayButton from "./PlayButton.astro";
+import LikeButton from "./LikeButton.astro";
 
 export interface Props {
   album: any;
@@ -11,16 +11,23 @@ const { album, track, index } = Astro.props;
 const trackIndex = index;
 const genre = album.genre || "Electronic";
 ---
+
 <div
-  class="grid grid-cols-[16px_4fr_2fr_2fr_2fr_2fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 rounded-md transition-colors hover:bg-white/10 group cursor-default items-center bg-transparent"
+  class="flex items-center sm:grid sm:grid-cols-[16px_4fr_2fr_2fr_2fr_2fr_2fr_minmax(120px,1fr)] gap-3 sm:gap-4 px-0 sm:px-4 py-3 sm:py-2 rounded-md transition-colors hover:bg-white/10 group cursor-default bg-transparent w-full border-b border-white/5 sm:border-none"
   data-player-row
   data-player-album={album.id}
   data-player-chap={trackIndex}
 >
   <!-- Index / Play Icon -->
-  <div class="flex items-center justify-center relative w-8">
-    <span class="text-sm font-medium text-white/60 group-hover:opacity-0 transition-opacity" data-index-label data-original-index={trackIndex + 1}>{trackIndex + 1}</span>
-    <PlayButton 
+  <div class="flex items-center justify-center relative w-6 sm:w-8 shrink-0">
+    <span
+      class="text-xs sm:text-sm font-medium text-white/60 group-hover:opacity-0 transition-opacity"
+      data-index-label
+      data-original-index={trackIndex + 1}
+    >
+      {(trackIndex + 1).toString().padStart(2, "0")}
+    </span>
+    <PlayButton
       bookId={album.id.toString()}
       chapIndex={trackIndex}
       class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-white active:scale-95"
@@ -28,72 +35,135 @@ const genre = album.genre || "Electronic";
     />
   </div>
 
-  <!-- Title Cell -->
-  <div class="flex items-center gap-3 min-w-0">
-    <div class="w-10 h-10 rounded shrink-0 overflow-hidden bg-white/5">
+  <!-- Title / Mobile Main Cell -->
+  <div class="flex items-center gap-3 min-w-0 flex-1 sm:flex-initial">
+    <div
+      class="w-12 h-12 sm:w-10 sm:h-10 rounded shrink-0 overflow-hidden bg-white/5"
+    >
       <img src={album.cover} alt="" class="w-full h-full object-cover" />
     </div>
     <div class="flex flex-col min-w-0">
-      <a 
+      <a
         href={`/song/track-${track.id}`}
-        class="text-base font-bold text-white truncate hover:underline cursor-pointer block max-w-fit"
+        class="text-sm sm:text-base font-semibold text-white truncate hover:underline cursor-pointer block max-w-fit"
         data-player-title
         data-player-album={album.id}
         data-player-chap={trackIndex}
       >
-        {track.title}
+        {track.title || album.artist}
       </a>
+      <!-- Mobile sub-info: Artist + Plays -->
+      <div
+        class="flex items-center text-[11px] text-white/50 sm:hidden mt-0.5 font-medium"
+      >
+        {
+          track.play_count ? (
+            <span>
+              {track.play_count >= 1000000
+                ? (track.play_count / 1000000).toFixed(0) + "M"
+                : track.play_count >= 1000
+                  ? (track.play_count / 1000).toFixed(0) + "K"
+                  : track.play_count}{" "}
+              Plays
+            </span>
+          ) : (
+            <span class="truncate">{album.artist}</span>
+          )
+        }
+      </div>
     </div>
   </div>
 
-  <!-- Artist Cell -->
+  <!-- Artist Cell (Desktop) -->
   <div class="hidden sm:flex items-center min-w-0">
-    <a href={`/artist/${encodeURIComponent(album.artist)}`} class="text-sm text-white/70 truncate hover:text-white cursor-pointer hover:underline">{album.artist}</a>
+    <a
+      href={`/artist/${encodeURIComponent(album.artist)}`}
+      class="text-sm text-white/70 truncate hover:text-white cursor-pointer hover:underline"
+      >{album.artist}</a
+    >
   </div>
 
-  <!-- Album Cell -->
+  <!-- Album Cell (Desktop) -->
   <div class="hidden md:flex items-center min-w-0">
-    <a href={`/album/${album.id}`} class="text-sm text-white/70 truncate hover:text-white cursor-pointer hover:underline block">{album.title}</a>
+    <a
+      href={`/album/${album.id}`}
+      class="text-sm text-white/70 truncate hover:text-white cursor-pointer hover:underline block"
+      >{album.title}</a
+    >
   </div>
 
-  <!-- Genre Cell -->
+  <!-- Genre Cell (Desktop) -->
   <div class="hidden lg:flex items-center min-w-0">
-    <span class="text-sm text-white/70 truncate capitalize cursor-pointer hover:text-white hover:underline">{genre}</span>
+    <span
+      class="text-sm text-white/70 truncate capitalize cursor-pointer hover:text-white hover:underline"
+      >{genre}</span
+    >
   </div>
 
-  <!-- Plays Cell -->
-  <div class="hidden xl:flex items-center justify-end min-w-0 text-sm text-white/70 pr-4 tabular-nums">
+  <!-- Plays Cell (Desktop) -->
+  <div
+    class="hidden xl:flex items-center justify-end min-w-0 text-sm text-white/70 pr-4 tabular-nums"
+  >
     {(track.play_count || 0).toLocaleString()}
   </div>
 
-  <!-- Date Added Cell -->
-  <div class="hidden xl:flex items-center min-w-0 text-sm text-white/70 whitespace-nowrap">
-    {track.added_at ? new Date(track.added_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently added'}
+  <!-- Date Added Cell (Desktop) -->
+  <div
+    class="hidden xl:flex items-center min-w-0 text-sm text-white/70 whitespace-nowrap"
+  >
+    {
+      track.added_at
+        ? new Date(track.added_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "Recently added"
+    }
   </div>
 
-  <!-- Duration / Like Cell -->
-  <div class="flex items-center justify-end gap-4 pr-4">
-    <button 
-      type="button" 
-      class="js-add-to-playlist-btn opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 text-white/50 hover:text-white p-1"
+  <!-- Actions (Mobile & Desktop) -->
+  <div class="flex items-center justify-end shrink-0 gap-3 sm:gap-4 sm:pr-4">
+    <!-- Desktop ADD (+) -->
+    <button
+      type="button"
+      class="hidden sm:block js-add-to-playlist-btn opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 text-white/50 hover:text-white p-1"
       data-track-id={track.id}
       title="Add to Playlist"
     >
-      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      <svg
+        class="w-4 h-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg
+      >
     </button>
-    <LikeButton 
-      albumId={album.id.toString()}
-      chapId={track.id.toString()}
-      class="opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
-    />
-    <span class="text-sm text-white/60 tabular-nums w-12 text-right">{track.duration || "0:00"}</span>
-    <button 
-      type="button" 
-      class="js-track-more-btn opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 p-1 hover:text-white text-white/70"
+
+    <!-- Like / Check (Always visible on mobile, hover on desktop) -->
+    <div
+      class="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+    >
+      <LikeButton albumId={album.id.toString()} chapId={track.id.toString()} />
+    </div>
+
+    <!-- Duration (Desktop Only) -->
+    <span
+      class="hidden sm:block text-sm text-white/60 tabular-nums w-12 text-right"
+      >{track.duration || "0:00"}</span
+    >
+
+    <!-- More Options (...) -->
+    <button
+      type="button"
+      class="p-1 hover:text-white text-white/70 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
       data-track-id={track.id}
       title="More"
     >
-      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"
+        ><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"
+        ></circle><circle cx="19" cy="12" r="1.5"></circle></svg
+      >
     </button>
   </div>
 </div>
