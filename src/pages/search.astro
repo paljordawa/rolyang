@@ -2,8 +2,8 @@
 import Layout from '../layouts/Layout.astro';
 ---
 <Layout title="Search">
-  <div class="px-4 pt-6 md:pt-10 max-w-7xl mx-auto">
-    <div class="sticky top-0 z-20 bg-[#121212] pb-6 pt-2">
+  <div class="px-2.5 pt-3 md:pt-10 max-w-7xl mx-auto">
+    <div class="sticky top-0 z-20 bg-[#121212] pb-6 pt-1">
       <div class="relative max-w-lg">
         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-5 h-5 text-gray-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -92,33 +92,22 @@ import Layout from '../layouts/Layout.astro';
 <script>
   import { $likedTracks } from '../store/playerStore';
   let debounceTimer: any;
-  const input = document.getElementById('search-input') as HTMLInputElement | null;
-  const resultsContainer = document.getElementById('search-results-container');
-  const browseAll = document.getElementById('search-browse-all');
-  
-  const sections = {
-    songs: { 
-      el: document.getElementById('section-songs'), 
-      grid: document.getElementById('results-songs') 
-    },
-    playlists: { 
-      el: document.getElementById('section-playlists'), 
-      grid: document.getElementById('results-playlists') 
-    },
-    artists: { 
-      el: document.getElementById('section-artists'), 
-      grid: document.getElementById('results-artists') 
-    },
-    albums: { 
-      el: document.getElementById('section-albums'), 
-      grid: document.getElementById('results-albums') 
-    }
-  };
+  function initSearch() {
+    const input = document.getElementById('search-input') as HTMLInputElement | null;
+    const resultsContainer = document.getElementById('search-results-container');
+    const browseAll = document.getElementById('search-browse-all');
+    if (!input || !resultsContainer || !browseAll) return;
 
-  const noResults = document.getElementById('no-results');
-  const queryString = document.getElementById('query-string');
+    const sections = {
+      songs: { el: document.getElementById('section-songs'), grid: document.getElementById('results-songs') },
+      playlists: { el: document.getElementById('section-playlists'), grid: document.getElementById('results-playlists') },
+      artists: { el: document.getElementById('section-artists'), grid: document.getElementById('results-artists') },
+      albums: { el: document.getElementById('section-albums'), grid: document.getElementById('results-albums') }
+    };
 
-  if (input && resultsContainer && browseAll) {
+    const noResults = document.getElementById('no-results');
+    const queryString = document.getElementById('query-string');
+
     input.addEventListener('input', (e) => {
       clearTimeout(debounceTimer);
       const query = (e.target as HTMLInputElement).value.trim();
@@ -134,7 +123,6 @@ import Layout from '../layouts/Layout.astro';
           browseAll.classList.add('hidden');
           resultsContainer.classList.remove('hidden');
           
-          // Clear current
           Object.values(sections).forEach(s => {
             if (s.grid) s.grid.innerHTML = '';
             s.el?.classList.add('hidden');
@@ -143,19 +131,14 @@ import Layout from '../layouts/Layout.astro';
 
           const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
           const data = await res.json();
-          
           let hasAny = false;
 
-          // Render Songs
           if (data.songs?.length > 0) {
             hasAny = true;
             sections.songs.el?.classList.remove('hidden');
             if (sections.songs.grid) {
               sections.songs.grid.innerHTML = data.songs.map((song: any) => `
-                <div 
-                  class="flex items-center gap-4 p-2 rounded-md hover:bg-white/10 group transition-colors cursor-pointer" 
-                  data-play-song='${JSON.stringify({bookId: song.album_id, chapIndex: song.trackIndex})}'
-                >
+                <div class="flex items-center gap-4 p-2 rounded-md hover:bg-white/10 group transition-colors cursor-pointer" data-play-song='${JSON.stringify({bookId: song.album_id, chapIndex: song.trackIndex, trackId: song.id, title: song.title, artist: song.albumArtist})}'>
                   <div class="w-10 h-10 shrink-0 relative overflow-hidden rounded bg-white/5 shadow-md">
                     <img src="${song.albumCover}" class="w-full h-full object-cover" />
                     <div class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -171,13 +154,7 @@ import Layout from '../layouts/Layout.astro';
                     </div>
                   </div>
                   <div class="flex items-center gap-4 px-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                    <button 
-                      class="js-add-to-playlist-btn text-white/50 hover:text-white transition p-1" 
-                      data-track-id="${song.id}"
-                      title="Add to Playlist"
-                    >
-                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                    </button>
+                    <button class="js-add-to-playlist-btn text-white/50 hover:text-white transition p-1" data-track-id="${song.id}"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
                     <button class="js-like-btn text-white/50 hover:text-white transition p-1" data-album-id="${song.album_id}" data-chap-id="${song.id}">
                       <svg class="w-4 h-4 empty-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                       <svg class="w-4 h-4 filled-heart text-[#1db954] hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
@@ -189,34 +166,22 @@ import Layout from '../layouts/Layout.astro';
             }
           }
 
-          // Render Playlists
           if (data.playlists?.length > 0) {
             hasAny = true;
             sections.playlists.el?.classList.remove('hidden');
             if (sections.playlists.grid) {
               sections.playlists.grid.innerHTML = data.playlists.map((pl: any) => `
-                <div 
-                  class="flex flex-col p-4 bg-[#181818] hover:bg-[#282828] transition-all duration-300 rounded-lg group cursor-pointer"
-                  data-nav-playlist="${pl.id}"
-                >
+                <div class="flex flex-col p-4 bg-[#181818] hover:bg-[#282828] transition-all duration-300 rounded-lg group cursor-pointer" data-nav-playlist="${pl.id}">
                   <div class="aspect-square w-full mb-4 relative shadow-[0_8px_24px_rgba(0,0,0,0.5)] rounded-md overflow-hidden ${pl.isLikedSongs ? 'bg-gradient-to-br from-[#450af5] to-[#8e8ee5] flex items-center justify-center' : 'bg-white/5'}">
-                    ${pl.isLikedSongs ? `
-                      <svg class="w-1/2 h-1/2 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
-                    ` : `
-                      <img src="${pl.cover}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    `}
-                    <button class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105">
-                      <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
-                    </button>
+                    ${pl.isLikedSongs ? `<svg class="w-1/2 h-1/2 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>` : `<img src="${pl.cover}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />`}
+                    <button class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105"><svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg></button>
                   </div>
                   <div class="font-bold text-base truncate text-white mb-1 group-hover:underline">${pl.title}</div>
                   <div class="text-sm text-white/70 truncate">${pl.artist}</div>
-                </div>
-              `).join('');
+                </div>`).join('');
             }
           }
 
-          // Render Artists
           if (data.artists?.length > 0) {
             hasAny = true;
             sections.artists.el?.classList.remove('hidden');
@@ -228,12 +193,10 @@ import Layout from '../layouts/Layout.astro';
                   </div>
                   <div class="font-bold text-base truncate text-white mb-1 group-hover:underline">${artist.artist}</div>
                   <div class="text-sm text-white/70 uppercase tracking-wider text-[10px]">Artist</div>
-                </a>
-              `).join('');
+                </a>`).join('');
             }
           }
 
-          // Render Albums
           if (data.albums?.length > 0) {
             hasAny = true;
             sections.albums.el?.classList.remove('hidden');
@@ -242,14 +205,11 @@ import Layout from '../layouts/Layout.astro';
                 <a href="/album/${album.id}" class="flex flex-col p-4 bg-[#181818] hover:bg-[#282828] transition-all duration-300 rounded-lg group cursor-pointer">
                   <div class="aspect-square w-full mb-4 relative shadow-[0_8px_24px_rgba(0,0,0,0.5)] rounded-md overflow-hidden">
                     <img src="${album.cover}" alt="${album.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <button class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105">
-                      <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
-                    </button>
+                    <button class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105"><svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg></button>
                   </div>
                   <div class="font-bold text-base truncate text-white mb-1 group-hover:underline">${album.title}</div>
                   <div class="text-sm text-white/70 truncate">${album.artist}</div>
-                </a>
-              `).join('');
+                </a>`).join('');
             }
           }
 
@@ -258,66 +218,62 @@ import Layout from '../layouts/Layout.astro';
             if (queryString) queryString.textContent = query;
           }
           
-          // Sync liked states immediately for newly rendered results
-          const likes = $likedTracks.get();
-          document.querySelectorAll('.js-like-btn').forEach((btn: any) => {
-            const albumId = btn.getAttribute('data-album-id');
-            const chapId = btn.getAttribute('data-chap-id');
-            const isLiked = !!likes[`${albumId}:${chapId}`];
-            const empty = btn.querySelector('.empty-heart');
-            const filled = btn.querySelector('.filled-heart');
-            if (isLiked) {
-              empty?.classList.add('hidden');
-              filled?.classList.remove('hidden');
-            } else {
-              empty?.classList.remove('hidden');
-              filled?.classList.add('hidden');
-            }
-          });
+          syncLikedHearts();
+          wireUpResults();
 
-          // Wire up playback for songs
-          document.querySelectorAll('[data-play-song]').forEach(el => {
-            el.addEventListener('click', (e) => {
-              if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('span[data-nav-album]') || (e.target as HTMLElement).closest('span[data-nav-artist]')) return;
-              const data = JSON.parse(el.getAttribute('data-play-song') || '{}');
-              // @ts-ignore
-              if (window.playerPlay) window.playerPlay({ bookId: data.bookId, chapIndex: data.chapIndex });
-            });
-          });
-
-          // Wire up navigation for metadata
-          document.querySelectorAll('[data-nav-album]').forEach(el => {
-            el.addEventListener('click', () => {
-              const albumId = el.getAttribute('data-nav-album');
-              // @ts-ignore
-              if (window.appNavigate) window.appNavigate(`/album/${albumId}`);
-            });
-          });
-
-          document.querySelectorAll('[data-nav-artist]').forEach(el => {
-            el.addEventListener('click', () => {
-              const name = el.getAttribute('data-nav-artist');
-              // @ts-ignore
-              if (window.appNavigate) window.appNavigate(`/artist/${encodeURIComponent(name)}`);
-            });
-          });
-
-          document.querySelectorAll('[data-nav-playlist]').forEach(el => {
-            el.addEventListener('click', () => {
-              const plId = el.getAttribute('data-nav-playlist');
-              if (plId === 'liked-songs') {
-                // @ts-ignore
-                if (window.appNavigate) window.appNavigate('/collection/tracks');
-              } else {
-                // Handle generic playlists later
-              }
-            });
-          });
-
-        } catch (err) {
-          console.error('Search failed:', err);
-        }
+        } catch (err) { console.error('Search failed:', err); }
       }, 400);
     });
   }
+
+  function syncLikedHearts() {
+    const likes = $likedTracks.get();
+    document.querySelectorAll('.js-like-btn').forEach((btn: any) => {
+      const isLiked = !!likes[`${btn.getAttribute('data-album-id')}:${btn.getAttribute('data-chap-id')}`];
+      btn.querySelector('.empty-heart')?.classList.toggle('hidden', isLiked);
+      btn.querySelector('.filled-heart')?.classList.toggle('hidden', !isLiked);
+    });
+  }
+
+  function wireUpResults() {
+    document.querySelectorAll('[data-play-song]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('button, a, [data-nav-album], [data-nav-artist]')) return;
+        const data = JSON.parse(el.getAttribute('data-play-song') || '{}');
+        // @ts-ignore
+        if (window.playerPlay) window.playerPlay(data);
+      });
+    });
+
+    document.querySelectorAll('[data-nav-album]').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.getAttribute('data-nav-album');
+        // @ts-ignore
+        if (window.appNavigate) window.appNavigate(`/album/${id}`);
+      });
+    });
+
+    document.querySelectorAll('[data-nav-artist]').forEach(el => {
+      el.addEventListener('click', () => {
+        const name = el.getAttribute('data-nav-artist');
+        // @ts-ignore
+        if (window.appNavigate) window.appNavigate(`/artist/${encodeURIComponent(name)}`);
+      });
+    });
+
+    document.querySelectorAll('[data-nav-playlist]').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.getAttribute('data-nav-playlist');
+        const href = id === 'liked-songs' ? '/collection/tracks' : `/playlist/${id}`;
+        // @ts-ignore
+        if (window.appNavigate) window.appNavigate(href);
+      });
+    });
+  }
+
+  // Initial and Transition logic
+  document.addEventListener('DOMContentLoaded', initSearch);
+  document.addEventListener('astro:page-load', initSearch);
+  initSearch();
+</script>
 </script>

@@ -58,7 +58,9 @@ const featuredAlbum = albums[0] || { cover: "" };
       <div class="flex items-center gap-6 mb-12">
         <button 
           class="w-14 h-14 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl hover:scale-105 active:scale-95 transition-all"
-          onclick={`if(window.playerPlay && ${allTracks.length > 0}){window.playerPlay({bookId:"${allTracks[0].album_id}",chapIndex:0,play:true});}`}
+          data-player-album={allTracks[0]?.album_id}
+          data-player-chap={0}
+          data-track-id={allTracks[0]?.id}
         >
           <svg viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
         </button>
@@ -82,13 +84,18 @@ const featuredAlbum = albums[0] || { cover: "" };
               class="grid grid-cols-[16px_4fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 rounded-md transition-colors hover:bg-white/10 group cursor-default items-center"
               data-player-row
               data-player-album={track.album_id}
-              data-player-chap={i}
+              data-player-chap={track.trackIndex}
+              data-track-id={track.id}
+              data-track-title={track.title}
+              data-artist-name={artistName}
             >
               <div class="flex items-center justify-center relative">
                 <span class="text-sm font-medium text-white/50 group-hover:opacity-0">{i + 1}</span>
                 <button 
                   class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white"
-                  onclick={`if(window.playerPlay){window.playerPlay({bookId:"${track.album_id}",chapIndex:${i},play:true});}`}
+                  data-player-album={track.album_id}
+                  data-player-chap={track.trackIndex}
+                  data-track-id={track.id}
                 >
                   <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
                 </button>
@@ -138,7 +145,8 @@ const featuredAlbum = albums[0] || { cover: "" };
                 <img src={album.cover} alt={album.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 <button 
                   class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105"
-                  onclick={`event.preventDefault(); if(window.playerPlay){window.playerPlay({bookId:"${album.id}",chapIndex:0,play:true});}`}
+                  data-player-album={album.id}
+                  data-player-chap={0}
                 >
                   <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
                 </button>

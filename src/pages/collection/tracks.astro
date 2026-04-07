@@ -112,6 +112,9 @@ import Layout from '../../layouts/Layout.astro';
       <div 
         class="grid grid-cols-[16px_4fr_2fr_2fr_2fr_2fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 rounded-md transition-colors hover:bg-white/10 group cursor-default items-center"
         data-player-row
+        data-track-id="${track.trackId}"
+        data-track-title="${track.title}"
+        data-artist-name="${track.albumArtist}"
         data-player-album="${track.albumId}"
         data-player-chap="${track.trackIndex}"
       >
@@ -185,18 +188,18 @@ import Layout from '../../layouts/Layout.astro';
     `).join('');
 
     // Wire up events
-    container.querySelectorAll('[data-play-at]').forEach(btn => {
+    container.querySelectorAll('[data-play-at]').forEach((btn, i) => {
       btn.addEventListener('click', () => {
         const [albumId, index] = btn.getAttribute('data-play-at')!.split(':');
         // @ts-ignore
-        if (window.playerPlay) window.playerPlay({ bookId: albumId, chapIndex: parseInt(index) });
+        if (window.playerPlay) window.playerPlay({ bookId: albumId, chapIndex: parseInt(index), trackId: likedTracks[i].trackId });
       });
     });
 
     document.getElementById('play-all-liked')?.addEventListener('click', () => {
       if (likedTracks.length > 0) {
         // @ts-ignore
-        if (window.playerPlay) window.playerPlay({ bookId: likedTracks[0].albumId, chapIndex: likedTracks[0].trackIndex });
+        if (window.playerPlay) window.playerPlay({ bookId: likedTracks[0].albumId, chapIndex: likedTracks[0].trackIndex, trackId: likedTracks[0].trackId });
       }
     });
 

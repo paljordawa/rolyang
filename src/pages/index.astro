@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import { client } from '../lib/db';
 import SkeletonAlbum from '../components/SkeletonAlbum.astro';
 import AlbumCard from '../components/AlbumCard.astro';
+import CompactAlbumCard from '../components/CompactAlbumCard.astro';
 import LikeButton from '../components/LikeButton.astro';
 import PlayButton from '../components/PlayButton.astro';
 
@@ -18,7 +19,7 @@ else if (time < 18) greeting = 'Good afternoon';
   <!-- Background Gradient for Home -->
   <div class="absolute inset-0 bg-gradient-to-b from-purple-900/30 to-[#121212] h-80 pointer-events-none -z-10 transition-colors duration-500"></div>
   
-  <div class="px-2 pt-2 md:pt-4 relative z-10">
+  <div class="px-2 pt-1 md:pt-4 relative z-10">
     <h1 class="page-title text-2xl sm:text-3xl font-bold mb-6 text-white">{greeting}</h1>
     
     <!-- Top Grid (6 items) -->
@@ -64,21 +65,20 @@ else if (time < 18) greeting = 'Good afternoon';
     )}
     </section>
 
-    <!-- Recently Played Row -->
-    <section class="mb-10">
-      <div class="flex items-center justify-between mb-4">
+    <!-- Recently Played Section (Compact Horizontal Grid) -->
+    <section class="mb-14">
+      <div class="flex items-center justify-between mb-5">
         <h2 class="font-bold text-2xl hover:underline cursor-pointer text-white">Recently played</h2>
-        <a href="/library" class="text-sm text-white/70 font-semibold hover:underline">Show all</a>
+        <a href="/library" class="text-sm text-white/50 font-bold uppercase tracking-widest hover:text-white transition-colors">Show all</a>
       </div>
-      <div class="flex gap-5 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
-        {[...albums].reverse().map(album => (
-          <AlbumCard 
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 pb-4">
+        {[...albums].reverse().slice(0, 6).map(album => (
+          <CompactAlbumCard 
             id={album.id as string} 
             title={album.title as string} 
             artist={album.artist as string} 
-            cover={album.cover as string} 
-            width="fixed"
-            showLike={true}
+            cover={album.cover as string}
           />
         ))}
       </div>

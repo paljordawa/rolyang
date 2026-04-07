@@ -73,6 +73,7 @@ const playlistTracks = tracksRes.rows as any[];
             <PlayButton 
               bookId={`playlist-${playlist.id}`}
               chapIndex={0}
+              trackId={playlistTracks[0]?.id?.toString()}
               class="w-14 h-14 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl hover:scale-105 active:scale-95 transition-all"
               svgClass="w-8 h-8 ml-1"
             />

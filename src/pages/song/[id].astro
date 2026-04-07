@@ -191,8 +191,11 @@ const genre =
           {
             chapters.slice(0, 5).map((ch, i) => (
               <div
-                class={`grid grid-cols-[16px_1fr_48px_80px] gap-4 px-4 py-3 rounded-md transition-all group hover:bg-white/10 items-center ${i === trackIndex ? "bg-white/10" : ""}`}
+                class={`grid grid-cols-[16px_1fr_auto_64px_32px] gap-4 px-4 py-3 rounded-md transition-all group hover:bg-white/10 items-center ${i === trackIndex ? "bg-white/10" : ""}`}
                 data-player-row
+                data-track-id={ch.id}
+                data-track-title={ch.title}
+                data-artist-name={album.artist}
                 data-player-album={album.id}
                 data-player-chap={i}
               >
@@ -209,37 +212,26 @@ const genre =
                     </span>
                   )}
 
-                  <button
+                  <PlayButton
+                    bookId={album.id.toString()}
+                    chapIndex={i}
+                    trackId={ch.id.toString()}
                     class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white transition-opacity"
-                    onclick={
-                      "if(window.playerPlay){window.playerPlay({bookId:'" +
-                      album.id +
-                      "',chapIndex:" +
-                      i +
-                      ",play:true});}"
-                    }
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" />
-                    </svg>
-                  </button>
+                    svgClass="w-4 h-4"
+                  />
                 </div>
 
                 <div class="flex flex-col min-w-0">
                   <a
-                    href={`/song/${album.id}-${i}`}
-                    class={`font-bold truncate text-sm md:text-base hover:underline transition-all ${i === trackIndex ? "text-[#1db954]" : "text-white"}`}
+                    href={`/song/track-${ch.id}`}
+                    class={`font-semibold truncate text-sm hover:underline transition-all ${i === trackIndex ? "text-[#1db954]" : "text-white"}`}
                   >
                     {ch.title}
                   </a>
-                  <span class="text-[12px] text-white/50">{album.artist}</span>
+                  <span class="text-[11px] text-white/50">{album.artist}</span>
                 </div>
 
-                <div class="flex items-center justify-center gap-3">
+                <div class="flex items-center justify-center gap-2">
                   <button
                     type="button"
                     class="js-add-to-playlist-btn opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 text-white/50 hover:text-white p-1"
@@ -256,16 +248,35 @@ const genre =
                       <path d="M12 5v14M5 12h14" />
                     </svg>
                   </button>
-                  <LikeButton
-                    albumId={album.id.toString()}
-                    chapId={ch.id.toString()}
-                    class="transition-all transform hover:scale-110 active:scale-90 opacity-0 group-hover:opacity-100 p-0"
-                    svgClass="w-4 h-4"
-                  />
+                  <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <LikeButton
+                      albumId={album.id.toString()}
+                      chapId={ch.id.toString()}
+                      class="p-0"
+                      svgClass="w-4 h-4"
+                    />
+                  </div>
                 </div>
 
-                <div class="flex items-center justify-end font-medium text-sm text-white/50 tabular-nums">
-                  {ch.duration}
+                <div class="flex items-center justify-end font-medium text-xs text-white/50 tabular-nums">
+                  {ch.duration || "0:00"}
+                </div>
+
+                <div class="flex items-center justify-end">
+                  <button
+                    type="button"
+                    class="js-track-more-btn p-1 border border-white/10 rounded-md hover:bg-white/10 text-white/50 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    data-track-id={ch.id}
+                    data-track-title={ch.title}
+                    data-artist-name={album.artist}
+                    title="More"
+                  >
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="5" cy="12" r="1.5" />
+                      <circle cx="12" cy="12" r="1.5" />
+                      <circle cx="19" cy="12" r="1.5" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             ))

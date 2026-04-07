@@ -4,8 +4,7 @@ export interface Props {
 }
 const { className = "mb-4" } = Astro.props;
 ---
-<div class={`grid grid-cols-[16px_4fr_2fr_2fr_2fr_2fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 border-b border-white/10 text-white/60 text-sm font-medium uppercase tracking-[0.1em] text-left items-center ${className}`}>
-  <div class="text-center">#</div>
+<div class={`grid grid-cols-[4fr_2fr_2fr_2fr_2fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 border-b border-white/10 text-white/60 text-sm font-medium uppercase tracking-[0.1em] text-left items-center ${className}`}>
   <div>Title</div>
   <div class="hidden sm:block">Artist</div>
   <div class="hidden md:block">Album</div>

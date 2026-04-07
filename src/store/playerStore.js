@@ -6,6 +6,9 @@ export const $isExpanded = atom(false);
 export const $currentTrack = atom({
   bookId: null,
   chapIndex: 0,
+  trackId: null,
+  title: null,
+  artist: null
 });
 
 // For syncing 'Like' states across components
@@ -100,19 +103,19 @@ if (typeof window !== 'undefined') {
     try { 
       console.log('playerPlay called with:', payload);
       // 1. Dispatch event (legacy support)
-      window.dispatchEvent(new CustomEvent('player:play', { detail: payload }));
+      window.dispatchEvent(new CustomEvent('player:play', { detail: payload })); 
       
       // 2. Direct Nanostore update (new Phase 3 architectural bridge)
       // Call directly because we are inside playerStore
-      updateTrack(payload.bookId, payload.chapIndex, payload.play !== false);
+      updateTrack(payload.bookId, payload.chapIndex, payload.play !== false, payload.trackId, payload.title, payload.artist);
     } catch (e) { 
       console.error('playerPlay error:', e);
     }
   };
 
   window.__nanostores_player = {
-    updateTrack: (bookId, chapIndex, shouldPlay = true) => {
-      updateTrack(bookId, chapIndex, shouldPlay);
+    updateTrack: (bookId, chapIndex, shouldPlay = true, trackId = null, title = null, artist = null) => {
+      updateTrack(bookId, chapIndex, shouldPlay, trackId, title, artist);
     },
     togglePlay: () => {
       togglePlay();
@@ -131,8 +134,8 @@ if (typeof window !== 'undefined') {
   hydrateLibrary();
 }
 
-export function updateTrack(bookId, chapIndex, shouldPlay = true) {
-  $currentTrack.set({ bookId, chapIndex });
+export function updateTrack(bookId, chapIndex, shouldPlay = true, trackId = null, title = null, artist = null) {
+  $currentTrack.set({ bookId, chapIndex, trackId, title, artist });
   if (shouldPlay) $isPlaying.set(true);
 }
 

@@ -1,0 +1,36 @@
+---
+import PlayButton from './PlayButton.astro';
+
+export interface Props {
+  id: string | number;
+  title: string;
+  artist?: string;
+  cover: string;
+  class?: string;
+}
+const { id, title, artist, cover, class: className = "" } = Astro.props;
+---
+<a 
+  href={`/album/${id}`}
+  class={`flex items-center gap-4 bg-[#181818]/60 hover:bg-[#282828] border border-white/5 transition-all p-2 rounded-xl group cursor-pointer relative shadow-sm hover:shadow-xl hover:-translate-y-0.5 ${className}`}
+>
+  <div class="w-14 h-14 md:w-16 md:h-16 shrink-0 relative rounded-lg overflow-hidden shadow-lg border border-white/5">
+     <img src={cover} alt={title} class="w-full h-full object-cover" />
+     <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <div class="w-8 h-8 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-lg scale-75 group-hover:scale-100 transition-transform duration-300">
+           <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 ml-0.5"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+     </div>
+  </div>
+  <div class="flex-1 min-w-0 pr-1">
+    <div class="font-bold text-[14px] md:text-base text-white truncate leading-tight group-hover:underline">{title}</div>
+    {artist && <div class="text-[11px] md:text-sm text-white/50 truncate mt-0.5">{artist}</div>}
+  </div>
+  
+  {/* Absolute play overlay for better UX */}
+  <div class="absolute right-4 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block">
+     <div class="text-[#1db954]">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+     </div>
+  </div>
+</a>

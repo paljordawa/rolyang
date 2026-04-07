@@ -2,93 +2,89 @@
 
 This document outlines the current architectural decisions for the Audiobook platform and details the roadmap required to scale it into a production-level standard audio streaming platform (similar to Spotify or Apple Music).
 
-## 1. Technical Foundation: Astro + View Transitions
+## 1. Technical Foundation: Astro + Howler.js + View Transitions
 
 ### Why Astro?
-Astro is primarily designed for generating static websites or Multi-Page Applications (MPAs). Historically, MPAs are completely incompatible with music streaming platforms because navigating to a new page (e.g., clicking on a new album or going to the library) forces the browser to refresh, which immediately kills the `<audio>` tag playback.
 
-### The Solution: View Transitions
+Astro is primarily designed for generating static websites or Multi-Page Applications (MPAs). Historically, MPAs are completely incompatible with music streaming platforms because navigating to a new page forces the browser to refresh, which immediately kills playback.
+
+### The Solution: View Transitions & Persistent Islands
+
 Despite using Astro, this platform achieves uninterrupted, continuous audio playback using **Astro View Transitions**.
 By enabling View Transitions (`<ViewTransitions />` in `Layout.astro`):
-- Astro intercepts all link clicks natively.
-- It dynamically fetches the next page's HTML in the background.
-- It smoothly replaces the DOM content (the body) of the old page with the new page.
-- **The Magic:** Any component placed outside the `<main>` transitions area—specifically our `<Player client:load />` island—safely persists exactly as it is, untouched by the DOM swap.
 
-This provides the lightning-fast load times and SEO benefits of a static site alongside the seamless "Single Page App" (SPA) feel necessary for streaming audio.
+- Astro intercepts all link clicks natively and replaces the DOM without a full page reload.
+- **The Magic:** The `<Player client:load />` island is marked with `transition:persist`, ensuring it survives DOM swaps untouched.
+
+### The Engine: Howler.js
+
+We have migrated from the native HTML5 `<audio>` tag to **Howler.js**. 
+
+- **Reliability:** Howler handles cross-browser audio issues, codecs, and buffering much more gracefully than raw tags.
+- **Unified API:** It provides a consistent interface for playback, volume, and seeking that integrates perfectly with our React-based Player island.
+- **Automatic Cleanup:** It manages the audio lifecycle during rapid page transitions, preventing memory leaks and "ghost audio."
 
 ---
 
-## 2. State Management (Migrating to Nanostores)
+## 2. State Management & Highlighting (Nanostores)
 
-Because the project relies on Astro's "Islands Architecture," standard global React Contexts are difficult to share across the entire page (between Astro UI and React components). 
+Because the project relies on Astro's "Islands Architecture," we use **[Nanostores](https://github.com/nanostores/nanostores)** for ultra-fast, framework-agnostic state management.
 
-The platform currently leans heavily on **Local Storage** and **Custom Event Dispatchers**. However, an upcoming architectural upgrade is migrating the platform to **[Nanostores](https://github.com/nanostores/nanostores)**.
+### Universal Song Highlighting System
 
-### Why Nanostores?
-- It is the officially recommended, framework-agnostic state manager for Astro.
-- It is tiny and incredibly fast.
-- It will cleanly replace our current `window.dispatchEvent` architecture, allowing the `<Player>` React component to communicate effortlessly with search bars, library lists, and queue components purely by subscribing to an atomic store.
+A core challenge of music platforms is keeping the UI synchronized as the user navigates between different playlists that contain the same songs. We solve this with a multi-layered approach:
+
+1. **Global Store:** The `$currentTrack` Nanostore holds the `trackId`, `title`, and `artist`.
+2. **Meta-Matching Logic:** Every track row in the application carries data attributes (`data-track-id`, `data-track-title`, `data-artist-name`). 
+3. **Navigation Sync:** On every `astro:page-load`, a global observer scans the new page's tracks and highlights the currently playing song using a tiered match:
+    - Match by unique `trackId`.
+    - Fallback: Match by **Title + Artist** (ensures highlighting works across custom playlists where IDs might differ).
 
 ---
 
 ## 3. Immediate Functional Roadmap (To-Dos)
 
-To transition this platform into a fully validated competitor to standard modern streaming platforms, the following architectural and functional pieces must be implemented:
-
 ### A. Media Session API Integration
-Currently, the audio does not communicate backward with the user's Operating System. 
-Integrating the `navigator.mediaSession` API inside `Player.jsx` will allow the browser to:
-- Pass the currently playing album cover art, song title, and artist name to the OS lock screen.
-- Catch global media playback events from keyboards or Bluetooth headphones (e.g., catching when a user physically presses 'Next Track' on their Airpods).
 
-### B. Scalable Content Delivery (HLS Streaming)
-The application currently loads exact `.mp3` and `.m4a` files. Large audiobooks or high-quality songs will cause significant buffering stalls before playback can begin.
-- **Goal:** Implement an HLS (HTTP Live Streaming) library (like `hls.js`).
-- **Why:** This chunks audio streams so playback starts instantly, and quality can dynamically downscale or upscale based on the user's internet connection.
+(In Progress) Integrating `navigator.mediaSession` inside `Player.jsx` to pass cover art and metadata to the OS lock screen and catch hardware "Next/Prev" keys.
 
-### C. Backend & Database Migration
-`data.json` currently acts as a mock database.
-- **Authentication:** Users must be able to log in securely without losing preferences.
-- **Headless CMS / Database:** Migrating the mock data to Firebase, Supabase, or a dedicated Node.js backend. User preferences (like 'Liked Songs') must be saved securely against their unique account ID rather than just relying on local browser cache (`localStorage`).
+### B. HLS Streaming (M3U8)
 
-### D. Advanced Queuing & Playlist Generation
-The Player currently tracks arrays of chapters locked inside an `album`.
-- **Goal:** Decouple the Player logic from `album.chapters` into an active, dynamic `Queue` array.
-- **Why:** This empowers the platform to combine multiple artists or albums seamlessly into user-generated 'Playlists' and enables a "Queue Next" button feature on individual tracks. 
+(Future) Implement `hls.js` or Howler's streaming support for large files to enable instant playback and adaptive quality.
+
+### C. Backend & Database
+
+(Active) Migrating `data.json` to Turso (SQLite on the Edge) and implementing persistent 'Liked Songs' and 'Followed Artists' via secure Astro API endpoints (SSR).
 
 ---
 
 ## 4. App Development Key Workflow
 
-This workflow represents the multi-phase deployment action plan to successfully migrate this platform to a Turso database relying on an Astro Server-Side Rendering (SSR) environment.
-
 ### Phase 1: Environment & Foundation
-- **Astro SSR Setup:** Set your `astro.config.mjs` to `output: 'server'`. This allows you to safely fetch and mutate private data in endpoints.
-- **Database Provisioning:** Create your Turso database and install the `@libsql/client` to connect it to your Astro project via secure `.env` variables.
-- **Storage Setup:** Sign up for an asset platform like Cloudinary, Uploadthing, or AWS S3 to host the large `.mp3` files (never attempt to store blob/raw audio files directly inside Turso).
 
-### Phase 2: Data Modeling (Turso Schema)
-- **Tracks Table:** Define standard columns such as `id`, `title`, `artist_name`, `album_art_url`, and `audio_src_url`.
-- **Users & Auth:** Integrate an authentication provider like Lucia Auth or Auth.js to handle secure user logins and session states.
-- **Interactions Table:** Create a relational `likes` table to securely store which `user_id` favorited which `track_id`.
+- **Astro SSR Setup:** Set `output: 'server'`. 
+- **Turso Database:** Connect via `@libsql/client` and secure `.env` variables.
 
-### Phase 3: The "Persistent Player" Logic
-- **Shared State:** Install **Nanostores**. This allows a "Now Playing" bar at the bottom of the screen to know exactly which song was clicked in a separate, isolated Astro list component without triggering massive parent re-renders.
-- **Global Layout:** Ensure the Audio Player component remains locked in your `Layout.astro` file so it persists globally across all page navigations.
-- **View Transitions:** Rely on enabled `<ViewTransitions />` in Astro to actively prevent the audio from "snapping," pausing, or restarting when the user clicks an artist's profile or explores the library.
+### Phase 2: Data Modeling
 
-### Phase 4: Core Player Features
-- **Audio Controller:** Use the native HTML5 `<audio>` API (or Howler.js for complex environments) for raw play/pause, volume, and seeking logic.
-- **Progress Tracking:** Map the `currentTime` of the active audio element to an `input` range slider to maintain a responsive, modern seek bar.
-- **Media Session API:** Activate code to allow users to control the music seamlessly via their computer's physical "Play/Pause" keys or OS lock screens.
+- **Tracks & Users:** Relational schema forTracks, Playlists, and User Interactions.
+
+### Phase 3: Persistent State (Nanostores)
+
+- **Shared State:** Use Nanostores to bridge the gap between Astro's static HTML and the dynamic React Player island.
+- **Universal Highlighting:** Implement the `astro:page-load` observer to keep tracklist UI synced with the playing state.
+
+### Phase 4: Core Player Features (Howler.js)
+
+- **Audio Controller:** Fully implement the Player using **Howler.js**.
+- **Metadata Propagation:** ensure `playerPlay()` calls and the `Player` island exchange `trackId`, `title`, and `artist` for robust UI synchronization.
 
 ### Phase 5: UI & Discovery
-- **The Library Page:** Create an Astro page that queries Turso (`SELECT * FROM tracks`) and maps them into clickable album cards or list items.
-- **Search Functionality:** Establish a simple SQL `LIKE` query inside a secure Astro API endpoint to let users actively find songs by name or artist using a search bar.
-- **Optimistic UI:** Utilize JavaScript directly to make the "Heart" icon fill in identically and instantly when clicked, ensuring visual feedback responds immediately even before Turso confirms the "Like" was successfully processed and saved via your backend APIs.
+
+- **CSR/SSR Discovery:** Query Turso for search results and library views.
+- **Optimistic UI:** Update Heart icons and follow buttons instantly via Nanostores before the database confirms.
 
 ### Phase 6: Optimization & Launch
-- **Edge Replication:** Utilize Turso's replication features to physically move copies of your database structurally closer to your users (e.g., replicate the DB in London if your user base is primary in Europe) to reduce latency blocks.
-- **Skeleton Loaders:** Add Astro's `server:defer` flags (if using late versions of Astro) to eagerly show blurred skeleton loading states while the tracklist is being verified or fetched from Turso.
-- **Deployment:** Connect and push your Github code directly to serverless edge functions on platforms like Vercel or Netlify for auto-deployments.
+
+- **Edge Deployment:** Deploy to Netlify/Vercel with Turso replication for sub-100ms latency globally.
+- **Skeleton Loaders:** Use Astro's latest features for deferred loading of tracklists.
