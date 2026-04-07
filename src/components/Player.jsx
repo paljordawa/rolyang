@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useStore } from '@nanostores/react';
-import { Howl } from 'howler';
+import { audioService } from '../lib/audioService';
 import { $isPlaying, $currentTrack, togglePlay, updateTrack } from '../store/playerStore';
 
 export default function Player({ books: albums = [], startBookId = null, startChapIndex = 0 }) {
-  const isPlaying = useStore($isPlaying);
-  const currentTrack = useStore($currentTrack);
-  const howlRef = useRef(null);
-  const lastAudioUrlRef = useRef(null);
+   const isPlaying = useStore($isPlaying);
+   const currentTrack = useStore($currentTrack);
+   const audioReadyRef = useRef(false);
+   const lastAudioUrlRef = useRef(null);
 
   // Derive current audio book and chapter
   const albumIdx = useMemo(() => {
@@ -32,16 +32,35 @@ export default function Player({ books: albums = [], startBookId = null, startCh
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
 
-  // 1. Core Howler Instance Manager
+  // 1. Initialize Audio Service
+  useEffect(() => {
+     audioService.init({
+       onPlay: () => { if (!$isPlaying.get()) $isPlaying.set(true); },
+       onPause: () => { if ($isPlaying.get()) $isPlaying.set(false); },
+       onEnd: () => handleNext(),
+       onLoad: (d) => {
+          setDuration(d);
+          setIsReady(true);
+          
+          // Recover saved play position
+          const trackIdKey = `${album.id}:${chap.id}`;
+          const saved = localStorage.getItem(`pos:${trackIdKey}`);
+          const time = saved ? Number(saved) : 0;
+          if (time > 2) {
+             audioService.seek(time);
+             setProgress(time);
+          }
+       },
+       onProgress: (p) => setProgress(p)
+     });
+  }, [album.id, chap?.id]);
+
+  // 2. Core Audio Instance Manager
   useEffect(() => {
     if (!chap || !chap.audio) return;
 
-    if (howlRef.current) {
-       // Prevent rebuilding Howl if track hasn't changed.
-       if (lastAudioUrlRef.current === chap.audio) {
-           return;
-       }
-       howlRef.current.unload();
+    if (lastAudioUrlRef.current === chap.audio) {
+        return;
     }
     
     lastAudioUrlRef.current = chap.audio;
@@ -49,38 +68,17 @@ export default function Player({ books: albums = [], startBookId = null, startCh
     setProgress(0);
     setDuration(0);
 
-    howlRef.current = new Howl({
-      src: [chap.audio],
-      html5: true, // Extremely important for audiobooks (streaming rather than loading to RAM)
-      preload: 'metadata',
-      volume: volume,
-      onplay: () => {
-         if (!$isPlaying.get()) $isPlaying.set(true);
-      },
-      onpause: () => {
-         if ($isPlaying.get()) $isPlaying.set(false);
-      },
-      onend: () => handleNext(),
-      onload: () => {
-         setDuration(howlRef.current.duration());
-         setIsReady(true);
-         
-         // Recover saved play position
-         const trackIdKey = `${album.id}:${chap.id}`;
-         const saved = localStorage.getItem(`pos:${trackIdKey}`);
-         const time = saved ? Number(saved) : 0;
-         if (time > 2) {
-            howlRef.current.seek(time);
-            setProgress(time);
-         }
-      },
-      onseek: () => {
-         if (howlRef.current) setProgress(howlRef.current.seek());
-      }
+    audioService.load({
+      audio: chap.audio,
+      id: chap.id,
+      title: chap.title,
+      artist: album.artist,
+      albumTitle: album.title,
+      cover: album.cover
     });
 
     if (isPlaying) {
-       howlRef.current.play();
+       audioService.play();
     }
 
   }, [chap?.audio, album.id, chap?.id]); // Only trigger when the track identity changes
@@ -97,19 +95,17 @@ export default function Player({ books: albums = [], startBookId = null, startCh
 
   // 3. React to Global Play/Pause
   useEffect(() => {
-    if (!howlRef.current) return;
-    
-    // Check if what Howler is doing mismatches our Nanostore (the source of truth)
-    if (isPlaying && !howlRef.current.playing()) {
-      howlRef.current.play();
-    } else if (!isPlaying && howlRef.current.playing()) {
-      howlRef.current.pause();
+    // Check if what AudioService is doing mismatches our Nanostore (the source of truth)
+    if (isPlaying) {
+      audioService.play();
+    } else {
+      audioService.pause();
     }
   }, [isPlaying]);
 
   // 4. Synchronize volume
   useEffect(() => {
-    if (howlRef.current) howlRef.current.volume(volume);
+    audioService.setVolume(volume);
   }, [volume]);
 
   useEffect(() => {
@@ -130,17 +126,16 @@ export default function Player({ books: albums = [], startBookId = null, startCh
     } catch (e) {}
   }, [album?.id, chap?.id, isPlaying]);
 
-  // 6. Progress Scrubber Fast Update Loop
+  // 6. Progress Scrubber Update Loop
   useEffect(() => {
     let animationFrameId;
     const updateProgress = () => {
-       if (howlRef.current && howlRef.current.playing()) {
-          const currentPos = howlRef.current.seek();
+       if (isPlaying) {
+          const currentPos = audioService.getCurrentPosition();
           setProgress(currentPos);
           
-          // Double check duration periodically in case it was missed during initial load
           if (duration === 0 || duration < 1) {
-             const d = howlRef.current.duration();
+             const d = audioService.getDuration();
              if (d > 0) setDuration(d);
           }
        }
@@ -148,17 +143,17 @@ export default function Player({ books: albums = [], startBookId = null, startCh
     };
     updateProgress();
     return () => cancelAnimationFrame(animationFrameId);
-  }, [duration]);
+  }, [duration, isPlaying]);
 
   // 7. Periodic Storage Save
   useEffect(() => {
     const t = setInterval(() => {
-       if (howlRef.current && howlRef.current.playing() && progress > 0) {
+       if (isPlaying && progress > 0) {
            localStorage.setItem(`pos:${album?.id}:${chap?.id}`, String(progress));
        }
     }, 2000);
     return () => clearInterval(t);
-  }, [progress, album?.id, chap?.id]);
+  }, [progress, album?.id, chap?.id, isPlaying]);
 
   // 8. Lifecycle expansion tracker
   useEffect(() => {
@@ -202,13 +197,10 @@ export default function Player({ books: albums = [], startBookId = null, startCh
   };
 
   const skipTo = (val) => {
-    if (howlRef.current) {
-      howlRef.current.seek(val);
-      setProgress(val);
-      // Ensure duration is sync'd in case it was 0
-      const d = howlRef.current.duration();
-      if (d > 0 && d !== duration) setDuration(d);
-    }
+    audioService.seek(val);
+    setProgress(val);
+    const d = audioService.getDuration();
+    if (d > 0 && d !== duration) setDuration(d);
   };
 
   function formatTime(s) {
