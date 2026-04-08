@@ -8,8 +8,8 @@ const albumsResult = await client.execute("SELECT * FROM albums");
 const albums = albumsResult.rows;
 
 // Fetch first track for each album to support quick play
-const tracksResult = await client.execute("SELECT id, album_id FROM tracks WHERE id LIKE '%c1' OR id LIKE '%0'");
-const firstTracks = Object.fromEntries(tracksResult.rows.map(t => [t.album_id, t.id]));
+// const tracksResult = await client.execute("SELECT id, album_id FROM tracks WHERE id LIKE '%c1' OR id LIKE '%0'");
+// const firstTracks = Object.fromEntries(tracksResult.rows.map(t => [t.album_id, t.id]));
 ---
 <Layout title="Your Library">
   <div class="px-2.5 pt-3 md:pt-10">
@@ -108,7 +108,7 @@ const firstTracks = Object.fromEntries(tracksResult.rows.map(t => [t.album_id, t
 
     // Wire up the quick play buttons (re-run logic)
     document.querySelectorAll('[data-player-book]').forEach(el => {
-      el.addEventListener('click', (e) => {
+      el.addEventListener('click', () => {
         const payload = { bookId: el.getAttribute('data-player-book'), chapIndex: 0 };
         // @ts-ignore
         if (window.playerPlay) window.playerPlay(payload);

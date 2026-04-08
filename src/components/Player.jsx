@@ -83,16 +83,6 @@ export default function Player({ books: albums = [], startBookId = null, startCh
 
   }, [chap?.audio, album.id, chap?.id]); // Only trigger when the track identity changes
 
-  // 2. Cleanup Howler on total complete unmount
-  useEffect(() => {
-     return () => {
-        if (howlRef.current) {
-           howlRef.current.unload();
-           howlRef.current = null;
-        }
-     };
-  }, []);
-
   // 3. React to Global Play/Pause
   useEffect(() => {
     // Check if what AudioService is doing mismatches our Nanostore (the source of truth)
@@ -112,9 +102,21 @@ export default function Player({ books: albums = [], startBookId = null, startCh
     if (chap && chap.id && (currentTrack.trackId !== chap.id || currentTrack.title !== chap.title)) {
        // This ensures the global store has the actual track title/identity 
        // even if started from a bookId/index pair.
+       console.log('Player updating track:', album.id, chapIdx, isPlaying, chap.id, chap.title, album.artist);
        updateTrack(album.id, chapIdx, isPlaying, chap.id, chap.title, album.artist);
     }
   }, [chap?.id, currentTrack.trackId, album.id, chapIdx, isPlaying]);
+
+  // Adjust chapIdx when album changes to keep the same track if possible
+  useEffect(() => {
+    if (!album || !album.chapters || !chap || !chap.id) return;
+    const index = album.chapters.findIndex(c => c.id === chap.id);
+    console.log('Album changed, looking for chap.id:', chap.id, 'in new album, found at index:', index);
+    if (index >= 0 && index !== chapIdx) {
+      console.log('Updating chapIdx from', chapIdx, 'to', index);
+      updateTrack(album.id, index, isPlaying, chap.id, chap.title, album.artist);
+    }
+  }, [album.id]);
 
   // 6. Fire now-playing event deeply required by Layout.astro to remove display:none from layout shell
   useEffect(() => {

@@ -5,7 +5,7 @@ interface Props {
 const { count = 6 } = Astro.props;
 ---
 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-  {Array.from({ length: count }).map((_, i) => (
+  {Array.from({ length: count }).map((_) => (
     <div class="flex flex-col p-4 bg-[#181818] rounded-lg group transition-all duration-300">
       <div class="aspect-square w-full mb-4 bg-white/5 rounded-md shadow-[0_8px_24px_rgba(0,0,0,0.5)] shimmer"></div>
       <div class="h-4 bg-white/10 rounded w-3/4 mb-3 shimmer"></div>

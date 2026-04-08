@@ -96,6 +96,7 @@ import Layout from '../layouts/Layout.astro';
     const input = document.getElementById('search-input') as HTMLInputElement | null;
     const resultsContainer = document.getElementById('search-results-container');
     const browseAll = document.getElementById('search-browse-all');
+    console.debug('[search] initSearch', { pathname: location.pathname, hasInput: !!input });
     if (!input || !resultsContainer || !browseAll) return;
 
     const sections = {
@@ -108,10 +109,10 @@ import Layout from '../layouts/Layout.astro';
     const noResults = document.getElementById('no-results');
     const queryString = document.getElementById('query-string');
 
-    input.addEventListener('input', (e) => {
+    const handleSearchInput = (e: Event) => {
       clearTimeout(debounceTimer);
-      const query = (e.target as HTMLInputElement).value.trim();
-      
+      const query = ((e.target as HTMLInputElement).value || '').trim();
+
       if (query === '') {
         resultsContainer.classList.add('hidden');
         browseAll.classList.remove('hidden');
@@ -223,13 +224,15 @@ import Layout from '../layouts/Layout.astro';
 
         } catch (err) { console.error('Search failed:', err); }
       }, 400);
-    });
+    };
+
+    input.oninput = handleSearchInput;
   }
 
   function syncLikedHearts() {
     const likes = $likedTracks.get();
     document.querySelectorAll('.js-like-btn').forEach((btn: any) => {
-      const isLiked = !!likes[`${btn.getAttribute('data-album-id')}:${btn.getAttribute('data-chap-id')}`];
+      const isLiked = !!(likes as any)[`${btn.getAttribute('data-album-id')}:${btn.getAttribute('data-chap-id')}`];
       btn.querySelector('.empty-heart')?.classList.toggle('hidden', isLiked);
       btn.querySelector('.filled-heart')?.classList.toggle('hidden', !isLiked);
     });
@@ -274,6 +277,6 @@ import Layout from '../layouts/Layout.astro';
   // Initial and Transition logic
   document.addEventListener('DOMContentLoaded', initSearch);
   document.addEventListener('astro:page-load', initSearch);
+  window.addEventListener('app:navigation', initSearch);
   initSearch();
-</script>
 </script>

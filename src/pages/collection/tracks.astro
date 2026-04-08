@@ -75,7 +75,7 @@ import Layout from '../../layouts/Layout.astro';
 
     allAlbums.forEach(album => {
       album.chapters.forEach((ch: any, i: number) => {
-        if (likes[`${album.id}:${ch.id}`]) {
+        if ((likes as any)[`${album.id}:${ch.id}`]) {
           likedTracks.push({
             albumId: album.id,
             albumTitle: album.title,
@@ -204,7 +204,7 @@ import Layout from '../../layouts/Layout.astro';
     });
 
     // Handle heart icon updates
-    $likedTracks.subscribe(newLikes => {
+    $likedTracks.subscribe(() => {
       // If a song was unliked, we need to refresh the whole page list to remove it
       // but only if we're still on this page.
       if (window.location.pathname === '/collection/tracks') {

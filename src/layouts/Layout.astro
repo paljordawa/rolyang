@@ -4,7 +4,7 @@ import Player from '../components/Player.jsx';
 import { client } from '../lib/db';
 import "../styles.css"
 
-const { hideNav, backHref, playerStart, hidePlayerUntilPlaying } = Astro.props;
+const { backHref, playerStart, hidePlayerUntilPlaying } = Astro.props;
 
 // Fetch all albums and tracks for global state (from live DB)
 const albumsResult = await client.execute("SELECT * FROM albums ORDER BY id ASC");
@@ -239,7 +239,7 @@ document.addEventListener('click', async (ev) => {
 });
 
 // popstate -> navigate
-window.addEventListener('popstate', (e) => {
+window.addEventListener('popstate', () => {
   const href = location.pathname + location.search + location.hash;
   appNavigate(href);
 });
@@ -387,7 +387,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
                   title: a.artist, 
                   cover: a.cover,
                   isArtist: true,
-                  isFollowed: !!followed[a.artist]
+                  isFollowed: !!(followed as any)[a.artist]
                 });
               }
             });
@@ -397,7 +397,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
             // Filter individual tracks from all albums
             allAlbums.forEach(a => {
               a.chapters.forEach((ch: any, i: number) => {
-                if (likes[`${a.id}:${ch.id}`]) {
+                if ((likes as any)[`${a.id}:${ch.id}`]) {
                   items.push({
                     id: a.id,
                     trackId: ch.id,
@@ -456,7 +456,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
 
           // Wire up interactions
           container.querySelectorAll('[data-play-library-song]').forEach(el => {
-            el.addEventListener('click', (e) => {
+            el.addEventListener('click', () => {
               // Only play if they didn't click external parts if any
               const data = JSON.parse(el.getAttribute('data-play-library-song') || '{}');
               // @ts-ignore
@@ -580,11 +580,23 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
 
                   if (typeof renderLibrary === 'function') renderLibrary('playlists');
                   closeModal();
-                  if (window.appNavigate) window.appNavigate(`/playlist/${newPlaylist.id}`);
+                  if ((window as any).appNavigate) (window as any).appNavigate(`/playlist/${newPlaylist.id}`);
                 } else {
-                  // Edit mode - just refresh current page
+                  // Edit mode - update playlist title/description in-place to preserve audio playback.
                   closeModal();
-                  location.reload();
+                  const newTitle = title;
+                  const newDescription = description;
+                  const titleEl = document.querySelector('h1') as HTMLElement;
+                  const descEl = document.querySelector('[data-playlist-description]') as HTMLElement;
+                  if (titleEl) titleEl.textContent = newTitle;
+                  if (descEl) descEl.textContent = newDescription;
+                  if ((window as any).__userPlaylists) {
+                    (window as any).__userPlaylists = ((window as any).__userPlaylists || []).map((p: any) => {
+                      if (p.id === currentEditId) return { ...p, title: newTitle, description: newDescription };
+                      return p;
+                    });
+                  }
+                  if (typeof renderLibrary === 'function') renderLibrary('playlists');
                 }
               }
             } catch (e) {
@@ -693,7 +705,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
     </script>
     <script>
       (function(){
-        function update(expanded){
+        function update(_expanded: boolean){
           // We don't hide titles anymore unless required contextually by React component.
         }
         try { update(localStorage.getItem('player:expanded') === 'true'); } catch(e){}
@@ -734,7 +746,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
     </nav>
     <script>
       (function(){
-        function update(expanded){
+        function update(expanded: boolean){
            var ftr = document.querySelector('[data-bottom-nav]') as HTMLElement; 
            var shell = document.querySelector('[data-player-shell]') as HTMLElement;
            if (ftr) { 
@@ -781,16 +793,16 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
         <script>
 (() => {
 function reveal() {
-  const shell = document.querySelector('[data-player-shell]');
+  const shell = document.querySelector('[data-player-shell]') as HTMLElement;
   if (!shell) return;
   if (shell.dataset.hidden !== 'false') shell.dataset.hidden = 'false';
 }
 window.addEventListener('player:now-playing', (ev) => {
-  if (ev && ev.detail && ev.detail.isPlaying !== false) reveal();
+  if (ev && (ev as CustomEvent).detail && (ev as CustomEvent).detail.isPlaying !== false) reveal();
 });
 window.addEventListener('player:play', () => reveal());
 try {
-  if (window.__playerNowPlaying && window.__playerNowPlaying.isPlaying !== false) reveal();
+  if ((window as any).__playerNowPlaying && (window as any).__playerNowPlaying.isPlaying !== false) reveal();
 } catch (e) {}
 })();
         </script>
@@ -1030,25 +1042,23 @@ try {
                body: JSON.stringify({ playlistId, trackId })
              });
              if (res.ok) {
-                location.reload();
+                const row = anchor.closest('[data-player-row]') as HTMLElement;
+                if (row && row.parentElement) {
+                  row.remove();
+                }
+                const countEl = document.querySelector('[data-playlist-track-count]') as HTMLElement;
+                if (countEl) {
+                  const current = parseInt(countEl.textContent || '0', 10) || 0;
+                  const next = Math.max(0, current - 1);
+                  countEl.textContent = `${next} track${next === 1 ? '' : 's'}`;
+                }
+                const playlistList = document.querySelector('.space-y-1');
+                if (playlistList && playlistList.querySelectorAll('[data-player-row]').length === 0) {
+                  playlistList.innerHTML = `<div class="py-20 text-center text-white/40 italic">This playlist is currently empty. Add tracks from any album!</div>`;
+                }
              }
           } catch (e) {
              console.error('Failed to remove track:', e);
-          }
-        });
-
-        menu.querySelector('#ctx-go-to-artist')?.addEventListener('click', () => {
-          menu?.classList.add('hidden');
-          if (artistName) {
-             // @ts-ignore
-             window.appNavigate('/artist/' + encodeURIComponent(artistName));
-          } else {
-             const row = anchor.closest('[data-player-row]') as HTMLElement;
-             const artistLink = row?.querySelector('a[href^="/artist/"]') as HTMLAnchorElement;
-             if (artistLink) {
-                // @ts-ignore
-                window.appNavigate(artistLink.getAttribute('href'));
-             }
           }
         });
 
@@ -1099,94 +1109,108 @@ try {
     <script>
       // Highlight active track in TrackRows continuously synced via Nanostores
       (function() {
-        var highlightInterval = null;
+        var highlightInterval: any = null;
+        
+        var updateRows = function() {
+          if (!(window as any).__nanostores_player || !(window as any).__nanostores_player.$currentTrack) return;
+          
+          var track = (window as any).__nanostores_player.$currentTrack.get();
+          var playing = (window as any).__nanostores_player.$isPlaying.get();
+          if (!track) return;
+
+          console.log('updateRows called, track:', track, 'playing:', playing);
+
+          document.querySelectorAll('[data-player-row]').forEach(function(el) {
+            var row = el as HTMLElement;
+            var rowTrackId = row.dataset.trackId;
+            var rowAlbumId = row.dataset.playerAlbum || row.dataset.playerBook;
+            var rowChapIdx = row.dataset.playerChap;
+            
+            console.log('Checking row:', rowTrackId, rowAlbumId, rowChapIdx);
+            
+            // Primary check: Match by Track ID (Independent of playlist/album)
+            var isCurrent = rowTrackId && track.trackId 
+              ? String(rowTrackId) === String(track.trackId)
+              : false;
+            
+            console.log('Primary check:', isCurrent, 'rowTrackId:', rowTrackId, 'track.trackId:', track.trackId);
+            
+            // Secondary check: Match by Album + Chapter index (If playing same context)
+            if (!isCurrent) {
+              isCurrent = (String(rowAlbumId) === String(track.bookId) && Number(rowChapIdx) === Number(track.chapIndex));
+              console.log('Secondary check:', isCurrent, 'rowAlbumId:', rowAlbumId, 'track.bookId:', track.bookId, 'rowChapIdx:', rowChapIdx, 'track.chapIndex:', track.chapIndex);
+            }
+
+            // Tertiary check (Fallback): Match by title + artist 
+            if (!isCurrent && track.title) {
+              var rowTitle = row.dataset.trackTitle;
+              var rowArtist = row.dataset.artistName;
+              
+              if (rowTitle && rowTitle === track.title) {
+                 // Matching by Artist as well if possible for safety
+                 if (!track.artist || !rowArtist || rowArtist === track.artist) {
+                    isCurrent = true;
+                 }
+              }
+              console.log('Tertiary check:', isCurrent, 'rowTitle:', rowTitle, 'track.title:', track.title, 'rowArtist:', rowArtist, 'track.artist:', track.artist);
+            }
+            
+            console.log('Final isCurrent:', isCurrent);
+            
+            var titleElement = row.querySelector('[data-player-title]');
+            var indexLabel = row.querySelector('[data-index-label]') as HTMLElement;
+            
+            if (isCurrent) {
+              row.setAttribute('data-active', 'true');
+              if (titleElement) {
+                titleElement.classList.add('text-[#1db954]');
+                titleElement.classList.remove('text-white');
+              }
+              
+              if (indexLabel) {
+                if (playing) {
+                  indexLabel.innerHTML = '<svg fill="#1db954" width="14" height="14" viewBox="0 0 24 24"><path d="M8 9.4c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v5.2c0 .75-.7 1.4-1.6 1.4s-1.6-.65-1.6-1.4V9.4zM2 13.5c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v1.1c0 .75-.7 1.4-1.6 1.4S2 15.35 2 14.6v-1.1zm12-7c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v12.2c0 .75-.7 1.4-1.6 1.4s-1.6-.65-1.6-1.4V6.5zm6 4c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v4.2c0 .75-.7 1.4-1.6 1.4s-1.6-.65-1.6-1.4v-4.2z"/></svg>';
+                } else {
+                  var original = indexLabel.dataset.originalIndex || '0';
+                  indexLabel.innerHTML = original.length === 1 ? '0' + original : original;
+                }
+                indexLabel.classList.add('text-[#1db954]');
+                indexLabel.classList.remove('text-white/60', 'group-hover:opacity-0');
+              }
+            } else {
+              row.removeAttribute('data-active');
+              if (titleElement) {
+                titleElement.classList.remove('text-[#1db954]');
+                titleElement.classList.add('text-white');
+              }
+              
+              if (indexLabel) {
+                var originalValue = indexLabel.dataset.originalIndex || '0';
+                indexLabel.innerHTML = originalValue.length === 1 ? '0' + originalValue : originalValue;
+                indexLabel.classList.remove('text-[#1db954]');
+                indexLabel.classList.add('text-white/60', 'group-hover:opacity-0');
+              }
+            }
+          });
+        };
         
         function initTrackHighlighting() {
-          if (highlightInterval) clearInterval(highlightInterval);
+          if (highlightInterval !== null) clearInterval(highlightInterval);
           
           highlightInterval = setInterval(function() {
             // Wait for the React component/store to attach to window
-            if (window.__nanostores_player && window.__nanostores_player.$currentTrack) {
-              clearInterval(highlightInterval);
-              
-              var updateRows = function() {
-                var track = window.__nanostores_player.$currentTrack.get();
-                var playing = window.__nanostores_player.$isPlaying.get();
-                if (!track) return;
-
-                document.querySelectorAll('[data-player-row]').forEach(function(el) {
-                  var row = el;
-                  var rowTrackId = row.dataset.trackId;
-                  var rowAlbumId = row.dataset.playerAlbum || row.dataset.playerBook;
-                  var rowChapIdx = row.dataset.playerChap;
-                  
-                  // Primary check: Match by Track ID (Independent of playlist/album)
-                  var isCurrent = rowTrackId && track.trackId 
-                    ? String(rowTrackId) === String(track.trackId)
-                    : false;
-                  
-                  // Secondary check: Match by Album + Chapter index (If playing same context)
-                  if (!isCurrent) {
-                    isCurrent = (String(rowAlbumId) === String(track.bookId) && Number(rowChapIdx) === Number(track.chapIndex));
-                  }
-
-                  // Tertiary check (Fallback): Match by title + artist 
-                  if (!isCurrent && track.title) {
-                    var rowTitle = row.dataset.trackTitle;
-                    var rowArtist = row.dataset.artistName;
-                    
-                    if (rowTitle && rowTitle === track.title) {
-                       // Matching by Artist as well if possible for safety
-                       if (!track.artist || !rowArtist || rowArtist === track.artist) {
-                          isCurrent = true;
-                       }
-                    }
-                  }
-                  
-                  var titleElement = row.querySelector('[data-player-title]');
-                  var indexLabel = row.querySelector('[data-index-label]');
-                  
-                  if (isCurrent) {
-                    row.setAttribute('data-active', 'true');
-                    if (titleElement) {
-                      titleElement.classList.add('text-[#1db954]');
-                      titleElement.classList.remove('text-white');
-                    }
-                    
-                    if (indexLabel) {
-                      if (playing) {
-                        indexLabel.innerHTML = '<svg fill="#1db954" width="14" height="14" viewBox="0 0 24 24"><path d="M8 9.4c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v5.2c0 .75-.7 1.4-1.6 1.4s-1.6-.65-1.6-1.4V9.4zM2 13.5c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v1.1c0 .75-.7 1.4-1.6 1.4S2 15.35 2 14.6v-1.1zm12-7c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v12.2c0 .75-.7 1.4-1.6 1.4s-1.6-.65-1.6-1.4V6.5zm6 4c0-.75.7-1.4 1.6-1.4s1.6.65 1.6 1.4v4.2c0 .75-.7 1.4-1.6 1.4s-1.6-.65-1.6-1.4v-4.2z"/></svg>';
-                      } else {
-                        var original = indexLabel.dataset.originalIndex || '0';
-                        indexLabel.innerHTML = original.length === 1 ? '0' + original : original;
-                      }
-                      indexLabel.classList.add('text-[#1db954]');
-                      indexLabel.classList.remove('text-white/60', 'group-hover:opacity-0');
-                    }
-                  } else {
-                    row.removeAttribute('data-active');
-                    if (titleElement) {
-                      titleElement.classList.remove('text-[#1db954]');
-                      titleElement.classList.add('text-white');
-                    }
-                    
-                    if (indexLabel) {
-                      var originalValue = indexLabel.dataset.originalIndex || '0';
-                      indexLabel.innerHTML = originalValue.length === 1 ? '0' + originalValue : originalValue;
-                      indexLabel.classList.remove('text-[#1db954]');
-                      indexLabel.classList.add('text-white/60', 'group-hover:opacity-0');
-                    }
-                  }
-                });
-              };
+            if ((window as any).__nanostores_player && (window as any).__nanostores_player.$currentTrack) {
+              if (highlightInterval !== null) clearInterval(highlightInterval);
               
               // Subscribe to changes
-              window.__nanostores_player.$currentTrack.listen(updateRows);
-              window.__nanostores_player.$isPlaying.listen(updateRows);
+              (window as any).__nanostores_player.$currentTrack.listen(updateRows);
+              (window as any).__nanostores_player.$isPlaying.listen(updateRows);
               
-              // Ensure we re-highlight after navigation
+              // Ensure we re-highlight after navigation and page swaps
               document.addEventListener('astro:page-load', updateRows);
               document.addEventListener('app:navigation', updateRows);
+              window.addEventListener('app:navigation', updateRows);
+              window.addEventListener('app:init', updateRows);
               
               // Immediate run
               updateRows();
@@ -1197,6 +1221,10 @@ try {
         initTrackHighlighting();
         // Fallback for View transitions: re-init highlighting logic structure if it was lost
         document.addEventListener('astro:after-swap', initTrackHighlighting);
+        
+        // Also listen for page load immediately
+        document.addEventListener('astro:page-load', updateRows);
+        document.addEventListener('app:navigation', updateRows);
       })();
     </script>
   </body>
