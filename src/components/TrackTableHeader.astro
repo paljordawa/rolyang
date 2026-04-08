@@ -4,13 +4,13 @@ export interface Props {
 }
 const { className = "mb-4" } = Astro.props;
 ---
-<div class={`grid grid-cols-[4fr_2fr_2fr_2fr_2fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 border-b border-white/10 text-white/60 text-sm font-medium uppercase tracking-[0.1em] text-left items-center ${className}`}>
+<div class={`grid grid-cols-[3fr_1.5fr_1.5fr_1.5fr_1fr_minmax(130px,auto)] gap-4 px-4 py-2 border-b border-white/10 text-white/60 text-sm font-medium uppercase tracking-[0.1em] text-left items-center ${className}`}>
   <div>Title</div>
   <div class="hidden sm:block">Artist</div>
   <div class="hidden md:block">Album</div>
   <div class="hidden lg:block">Genre</div>
   <div class="hidden xl:block text-right pr-4">Plays</div>
-  <div class="hidden xl:block">Date added</div>
+
   <div class="flex justify-end pr-8">
     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
   </div>
