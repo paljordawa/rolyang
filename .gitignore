@@ -13,3 +13,8 @@ package-lock.json
 
 # Local Netlify folder
 .netlify
+
+# Database files
+*.db
+*.db-journal
+local.db

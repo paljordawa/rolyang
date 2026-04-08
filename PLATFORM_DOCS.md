@@ -72,6 +72,9 @@ To ensure audio keeps playing when the app is minimized:
 
 - **Turso Database:** Migrating to relational SQLite on the edge for 'Liked Songs' and 'Followed Artists'.
 
+> [!WARNING]
+> **Database Sync Incident:** Previously, switching the local app to sync with a fresh, empty remote Turso database caused the local App to crash. Because the app expected the remote Turso DB to be the "source of truth", it synced down the remote's empty state (wiping or ignoring local schema). To fix this in the future: Always seed the remote Turso database FIRST using `Turso shell` or seeding scripts with environment variables (`TURSO_DATABASE_URL`) before connecting the local codebase as an embedded replica. Also, NEVER commit `local.db` to Git, as SQLite binaries cannot be merged and will corrupt via conflict markers!
+
 ### Phase 3: Persistent State (Nanostores)
 
 - **Shared State:** Use Nanostores to bridge the gap between Astro's static HTML and the dynamic React Player island.
