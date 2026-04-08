@@ -1,7 +1,8 @@
 import { createClient } from "@libsql/client/node";
 
 const client = createClient({
-  url: "file:local.db",
+  url: process.env.TURSO_DATABASE_URL || "file:local.db",
+  authToken: process.env.TURSO_AUTH_TOKEN
 });
 
 async function migrate() {
