@@ -3,33 +3,40 @@ import Layout from '../../layouts/Layout.astro';
 import TrackTableHeader from '../../components/TrackTableHeader.astro';
 import TrackRow from '../../components/TrackRow.astro';
 import PlayButton from '../../components/PlayButton.astro';
-import { client } from '../../lib/db';
+import { createSupabaseServerClient } from '../../lib/supabaseServer';
 
 const { id } = Astro.params;
 if (!id) return Astro.redirect('/404');
 
-// 1. Get playlist details from live DB
-const playlistRes = await client.execute({
-  sql: "SELECT * FROM playlists WHERE id = ?",
-  args: [id]
-});
+const supabase = createSupabaseServerClient(Astro);
 
-const playlist = playlistRes.rows[0] as any;
+// 1. Get playlist details from Supabase
+const { data: playlist } = await supabase
+  .from('playlists')
+  .select('*')
+  .eq('id', id)
+  .single();
 
-// 2. Get tracks in this playlist
-const tracksRes = await client.execute({
-  sql: `
-    SELECT t.*, a.title as album_title, a.artist as album_artist, a.cover as album_cover
-    FROM playlist_tracks pt
-    JOIN tracks t ON pt.track_id = t.id
-    JOIN albums a ON t.album_id = a.id
-    WHERE pt.playlist_id = ?
-    ORDER BY pt.added_at ASC
-  `,
-  args: [id]
-});
+let playlistTracks = [];
 
-const playlistTracks = tracksRes.rows as any[];
+if (playlist) {
+  // 2. Get tracks in this playlist
+  const { data: tracksRes } = await supabase
+    .from('playlist_tracks')
+    .select('added_at, tracks(*, albums(title, artist, cover))')
+    .eq('playlist_id', id)
+    .order('added_at', { ascending: true });
+
+  if (tracksRes) {
+    playlistTracks = tracksRes.map(pt => ({
+      ...pt.tracks,
+      album_title: pt.tracks.albums?.title,
+      album_artist: pt.tracks.albums?.artist,
+      album_cover: pt.tracks.albums?.cover,
+      added_at: pt.added_at
+    }));
+  }
+}
 ---
 
 <Layout backHref="/library">

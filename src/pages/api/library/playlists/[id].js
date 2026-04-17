@@ -1,35 +1,41 @@
-import { client } from '../../../../lib/db';
+import { createSupabaseServerClient } from '../../../../lib/supabaseServer';
 
-export const GET = async ({ params }) => {
+export const GET = async (context) => {
+  const { params } = context;
   const { id } = params;
   try {
-    // 1. Get playlist details
-    const playlistRes = await client.execute({
-      sql: "SELECT * FROM playlists WHERE id = ?",
-      args: [id]
-    });
+    const supabase = createSupabaseServerClient(context);
 
-    if (playlistRes.rows.length === 0) {
+    // 1. Get playlist details
+    const { data: playlist, error: playlistError } = await supabase
+      .from('playlists')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (playlistError || !playlist) {
       return new Response(JSON.stringify({ error: 'Playlist not found' }), { status: 404 });
     }
 
     // 2. Get tracks in this playlist
-    // We need to join with tracks AND albums to get the cover/artist info
-    const tracksRes = await client.execute({
-      sql: `
-        SELECT t.*, a.title as album_title, a.artist as album_artist, a.cover as album_cover, pt.added_at
-        FROM playlist_tracks pt
-        JOIN tracks t ON pt.track_id = t.id
-        JOIN albums a ON t.album_id = a.id
-        WHERE pt.playlist_id = ?
-        ORDER BY pt.added_at ASC
-      `,
-      args: [id]
-    });
+    const { data: tracksData, error: tracksError } = await supabase
+      .from('playlist_tracks')
+      .select('added_at, tracks(*, albums(title, artist, cover))')
+      .eq('playlist_id', id)
+      .order('added_at', { ascending: true });
+
+    // Transform nested structure back to flat structure expected by the UI
+    const formattedTracks = (tracksData || []).map(pt => ({
+      ...pt.tracks,
+      album_title: pt.tracks.albums?.title,
+      album_artist: pt.tracks.albums?.artist,
+      album_cover: pt.tracks.albums?.cover,
+      added_at: pt.added_at
+    }));
 
     return new Response(JSON.stringify({
-      ...playlistRes.rows[0],
-      tracks: tracksRes.rows
+      ...playlist,
+      tracks: formattedTracks
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
@@ -40,16 +46,26 @@ export const GET = async ({ params }) => {
   }
 };
 
-export const PATCH = async ({ params, request }) => {
+export const PATCH = async (context) => {
+  const { params, request } = context;
   const { id } = params;
   try {
+    const supabase = createSupabaseServerClient(context);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+
     const { title, description } = await request.json();
     if (!title) return new Response(JSON.stringify({ error: 'Title is required' }), { status: 400 });
 
-    await client.execute({
-      sql: "UPDATE playlists SET title = ?, description = ? WHERE id = ?",
-      args: [title, description || '', id]
-    });
+    const { error } = await supabase
+      .from('playlists')
+      .update({ title, description: description || '' })
+      .match({ id, user_id: user.id });
+
+    if (error) throw error;
 
     return new Response(JSON.stringify({ success: true, title, description }), { status: 200 });
   } catch (error) {
@@ -58,18 +74,27 @@ export const PATCH = async ({ params, request }) => {
   }
 };
 
-export const DELETE = async ({ params }) => {
+export const DELETE = async (context) => {
+  const { params } = context;
   const { id } = params;
   try {
-    await client.execute({
-      sql: "DELETE FROM playlists WHERE id = ?",
-      args: [id]
-    });
+    const supabase = createSupabaseServerClient(context);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+
+    const { error } = await supabase
+      .from('playlists')
+      .delete()
+      .match({ id, user_id: user.id });
+      
+    if (error) throw error;
+
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (error) {
     console.error('Delete Playlist error:', error);
     return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
   }
 };
-
-

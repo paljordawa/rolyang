@@ -1,14 +1,27 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { client } from '../lib/db';
+import { createSupabaseServerClient } from '../lib/supabaseServer';
 import SkeletonAlbum from '../components/SkeletonAlbum.astro';
 import AlbumCard from '../components/AlbumCard.astro';
 import CompactAlbumCard from '../components/CompactAlbumCard.astro';
-// import LikeButton from '../components/LikeButton.astro';
 import PlayButton from '../components/PlayButton.astro';
 
-const albumsResult = await client.execute("SELECT * FROM albums LIMIT 12");
-const albums = albumsResult.rows;
+const supabase = createSupabaseServerClient(Astro);
+const { data: { user } } = await supabase.auth.getUser();
+
+// Protect the entire application by bouncing unauthenticated users exactly to the full screen login page
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const { data: albums = [], error } = await supabase
+  .from('albums')
+  .select('*')
+  .limit(12);
+
+if (error) {
+  console.error("Supabase error:", error);
+}
 
 const time = new Date().getHours();
 let greeting = 'Good evening';

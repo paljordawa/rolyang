@@ -1,29 +1,34 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { client } from '../../lib/db';
+import { createSupabaseServerClient } from '../../lib/supabaseServer';
 import TrackTableHeader from '../../components/TrackTableHeader.astro';
 import TrackRow from '../../components/TrackRow.astro';
 import PlayButton from '../../components/PlayButton.astro';
 
 const { id } = Astro.params;
+const supabase = createSupabaseServerClient(Astro);
 
 // Fetch album details
-const albumResult = await client.execute({
-  sql: "SELECT * FROM albums WHERE id = ? LIMIT 1",
-  args: [id || ""]
-});
-const album = albumResult.rows[0] as any;
+const { data: album, error: albumError } = await supabase
+  .from('albums')
+  .select('*')
+  .eq('id', id)
+  .single();
 
 // Fetch tracks for this album
 let chapters: any[] = [];
 let totalDurationSeconds = 0;
 
 if (album) {
-  const tracksResult = await client.execute({
-    sql: "SELECT * FROM tracks WHERE album_id = ? ORDER BY id ASC",
-    args: [id || ""]
-  });
-  chapters = tracksResult.rows;
+  const { data: tracksResult, error: tracksError } = await supabase
+    .from('tracks')
+    .select('*')
+    .eq('album_id', id)
+    .order('id', { ascending: true });
+  
+  if (!tracksError) {
+    chapters = tracksResult || [];
+  }
 
   // Calculate total duration
   chapters.forEach((ch) => {

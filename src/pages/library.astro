@@ -1,15 +1,17 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { client } from '../lib/db';
+import { createSupabaseServerClient } from '../lib/supabaseServer';
 import SkeletonAlbum from '../components/SkeletonAlbum.astro';
 import AlbumCard from '../components/AlbumCard.astro';
 
-const albumsResult = await client.execute("SELECT * FROM albums");
-const albums = albumsResult.rows;
+const supabase = createSupabaseServerClient(Astro);
+const { data: albums = [], error } = await supabase
+  .from('albums')
+  .select('*');
 
-// Fetch first track for each album to support quick play
-// const tracksResult = await client.execute("SELECT id, album_id FROM tracks WHERE id LIKE '%c1' OR id LIKE '%0'");
-// const firstTracks = Object.fromEntries(tracksResult.rows.map(t => [t.album_id, t.id]));
+if (error) {
+  console.error("Library fetch error:", error);
+}
 ---
 <Layout title="Your Library">
   <div class="px-2.5 pt-3 md:pt-10">

@@ -1,37 +1,52 @@
-import { client } from '../../../lib/db';
+import { createSupabaseServerClient } from '../../../lib/supabaseServer';
 
-export const GET = async () => {
+export const GET = async (context) => {
   try {
+    const supabase = createSupabaseServerClient(context);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return new Response(JSON.stringify({ likedTracks: {}, followedArtists: {}, playlists: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     // 1. Fetch liked tracks
-    const likedTracksResult = await client.execute(`
-      SELECT id, album_id FROM tracks WHERE liked = 1
-    `);
+    const { data: likedRows } = await supabase
+      .from('user_likes')
+      .select('track_id, tracks(album_id)')
+      .eq('user_id', user.id);
 
     const likedTracks = {};
-    likedTracksResult.rows.forEach(row => {
-      // Map it back to the same composite key format the UI uses: "album_id:chap_id"
-      likedTracks[`${row.album_id}:${row.id}`] = true;
+    (likedRows || []).forEach(row => {
+      if (row.tracks) {
+        likedTracks[`${row.tracks.album_id}:${row.track_id}`] = true;
+      }
     });
 
     // 2. Fetch followed artists
-    const followsResult = await client.execute(`
-      SELECT artist_name FROM follows
-    `);
+    const { data: followRows } = await supabase
+      .from('user_follows')
+      .select('artist_name')
+      .eq('user_id', user.id);
 
     const followedArtists = {};
-    followsResult.rows.forEach(row => {
+    (followRows || []).forEach(row => {
       followedArtists[row.artist_name] = true;
     });
 
     // 3. Fetch user playlists
-    const playlistsResult = await client.execute(`
-      SELECT * FROM playlists ORDER BY created_at DESC
-    `);
+    const { data: playlistsRows } = await supabase
+      .from('playlists')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
     return new Response(JSON.stringify({
       likedTracks,
       followedArtists,
-      playlists: playlistsResult.rows
+      playlists: playlistsRows || []
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

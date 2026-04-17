@@ -1,70 +1,58 @@
 ---
 import { ClientRouter } from 'astro:transitions';
 import Player from '../components/Player.jsx';
-import { client } from '../lib/db';
+import { createSupabaseServerClient } from '../lib/supabaseServer';
 import "../styles.css"
 
 const { backHref, playerStart, hidePlayerUntilPlaying } = Astro.props;
+const supabase = createSupabaseServerClient(Astro);
 
-// Fetch all albums and tracks for global state (from live DB)
-const albumsResult = await client.execute("SELECT * FROM albums ORDER BY id ASC");
-const albumsBase = albumsResult.rows as any[];
+// Fetch all albums and tracks for global state
+const { data: albumsBase = [] } = await supabase
+  .from('albums')
+  .select('*, tracks(*)')
+  .order('id', { ascending: true });
 
-const playlistsResult = await client.execute("SELECT * FROM playlists ORDER BY created_at DESC");
-const playlists = playlistsResult.rows as any[];
+// Fetch playlists (including system/public ones if any, but usually user-specific)
+const { data: { user } } = await supabase.auth.getUser();
+let playlists = [];
+if (user) {
+  const { data: userPlaylists } = await supabase
+    .from('playlists')
+    .select('*, playlist_tracks(track_id, tracks(*, albums(*)))')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  playlists = userPlaylists || [];
+}
 
-const albums = await Promise.all(albumsBase.map(async (album) => {
-  const tracksResult = await client.execute({
-    sql: "SELECT * FROM tracks WHERE album_id = ? ORDER BY id ASC",
-    args: [album.id]
-  });
-  
-  // Sanitize for serialization - BigInt to string
-  const cleanAlbum = {
-    ...album,
-    id: album.id?.toString(),
-    chapters: tracksResult.rows.map((r: any) => ({
-      ...r,
-      id: r.id?.toString(),
-      album_id: r.album_id?.toString()
-    }))
-  };
-  return cleanAlbum;
-}));
-
-const cleanPlaylists = playlists.map(p => ({
-  ...p,
-  id: p.id?.toString()
+const albums = albumsBase.map((album) => ({
+  ...album,
+  chapters: (album.tracks || []).map((t: any) => ({
+    ...t,
+    album_id: t.album_id?.toString()
+  }))
 }));
 
 // Build playable "books" from playlists
-const playlistsWithTracks = await Promise.all(cleanPlaylists.map(async (p) => {
-  const tracksRes = await client.execute({
-    sql: `
-      SELECT t.*, a.title as album_title, a.artist as album_artist, a.cover as album_cover
-      FROM playlist_tracks pt
-      JOIN tracks t ON pt.track_id = t.id
-      JOIN albums a ON t.album_id = a.id
-      WHERE pt.playlist_id = ?
-      ORDER BY pt.added_at ASC
-    `,
-    args: [p.id]
-  });
+const playlistsWithTracks = playlists.map((p: any) => {
+  const tracks = (p.playlist_tracks || []).map((pt: any) => ({
+    ...pt.tracks,
+    album_title: pt.tracks.albums?.title,
+    album_artist: pt.tracks.albums?.artist,
+    album_cover: pt.tracks.albums?.cover
+  }));
+
   return {
     ...p,
     id: `playlist-${p.id}`,
     artist: 'User Playlist',
-    // Fallback cover if playlist has no cover
-    cover: p.cover !== 'gradient' ? p.cover : (tracksRes.rows[0]?.album_cover || '/social.jpg'),
-    chapters: tracksRes.rows.map((r: any) => ({
-      ...r,
-      id: r.id?.toString(),
-      album_id: r.album_id?.toString()
-    }))
+    cover: p.cover !== 'gradient' ? p.cover : (tracks[0]?.album_cover || '/social.jpg'),
+    chapters: tracks
   };
-}));
+});
 
 const allBooksForPlayer = [...albums, ...playlistsWithTracks];
+const cleanPlaylists = playlists;
 
 const siteTitle = 'Rolyang Music Player';
 const siteDescription = 'Listen to curated music from the Rolyang collection.';
@@ -662,19 +650,88 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
                </button>
             </div>
             
-            <div class="flex items-center gap-3 md:gap-4">
-               <button class="hidden md:block rounded-full bg-white text-black font-bold text-[13px] px-4 py-1.5 hover:scale-105 transition">Explore Premium</button>
-               <button class="hidden md:flex rounded-full bg-black/70 text-white font-bold text-[13px] px-4 py-1.5 hover:scale-105 transition items-center gap-1">
-                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                 Install App
-               </button>
-               <button data-share-button class="w-8 h-8 rounded-full bg-black/70 hover:scale-105 hover:bg-black/90 transition text-white/70 hover:text-white flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
-                  </svg>
-               </button>
-               <div class="w-8 h-8 rounded-full bg-pink-500 hover:scale-105 transition flex items-center justify-center font-bold text-black text-sm cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.3)]">D</div>
+             <div class="flex items-center gap-3 md:gap-4 relative">
+               {user ? (
+                 <div class="flex items-center gap-3">
+                   <button class="hidden md:block rounded-full bg-white text-black font-bold text-[13px] px-4 py-1.5 hover:scale-105 transition">Premium</button>
+                   
+                   <!-- Profile Dropdown Container -->
+                   <div class="relative" id="profile-menu-container">
+                     <div 
+                       id="profile-btn"
+                       class="w-8 h-8 rounded-full bg-pink-500 hover:scale-105 transition flex items-center justify-center font-bold text-black text-sm cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.3)] overflow-hidden border-2 border-transparent hover:border-white/50"
+                     >
+                       {user.user_metadata?.avatar_url ? (
+                         <img src={user.user_metadata.avatar_url} alt="Profile" class="w-full h-full object-cover" />
+                       ) : (
+                         user.email?.charAt(0).toUpperCase() || 'U'
+                       )}
+                     </div>
+
+                     <!-- Dropdown Menu -->
+                     <div 
+                        id="profile-dropdown"
+                        class="absolute right-0 mt-2 w-48 bg-[#282828] rounded-md shadow-[0_16px_24px_rgba(0,0,0,0.3),_0_6px_8px_rgba(0,0,0,0.2)] py-1 opacity-0 pointer-events-none transform scale-95 transition-all duration-200 origin-top-right z-50 border border-white/10"
+                     >
+                        <div class="px-4 py-3 border-b border-white/10">
+                          <p class="text-sm font-medium text-white truncate">{user.user_metadata?.full_name || 'User'}</p>
+                          <p class="text-xs text-white/50 truncate max-w-[160px]">{user.email}</p>
+                        </div>
+                        <a href="/library" class="block px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer w-full text-left">Your Library</a>
+                        <button 
+                          id="logout-btn"
+                          class="block px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer w-full text-left border-t border-white/5"
+                        >
+                          Log out
+                        </button>
+                     </div>
+                   </div>
+                 </div>
+               ) : (
+                 <a 
+                   href="/login" 
+                   class="rounded-full bg-white text-black font-bold text-[14px] px-6 py-2 hover:scale-105 transition"
+                 >
+                   Log in
+                 </a>
+               )}
             </div>
+
+            <script>
+              import { supabase } from '../lib/supabase';
+              
+              // Logout logic
+              document.getElementById('logout-btn')?.addEventListener('click', async () => {
+                await supabase.auth.signOut();
+                window.location.href = '/';
+              });
+
+              // Toggle dropdown logic
+              const profileBtn = document.getElementById('profile-btn');
+              const profileDropdown = document.getElementById('profile-dropdown');
+
+              if (profileBtn && profileDropdown) {
+                profileBtn.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  const isHidden = profileDropdown.classList.contains('opacity-0');
+                  if (isHidden) {
+                    profileDropdown.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+                    profileDropdown.classList.add('opacity-100', 'pointer-events-auto', 'scale-100');
+                  } else {
+                    profileDropdown.classList.remove('opacity-100', 'pointer-events-auto', 'scale-100');
+                    profileDropdown.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+                  }
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                  if (!profileDropdown.contains(e.target as Node) && e.target !== profileBtn) {
+                    profileDropdown.classList.remove('opacity-100', 'pointer-events-auto', 'scale-100');
+                    profileDropdown.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+                  }
+                });
+              }
+            </script>
          </header>
          
          <div class="pb-24 pt-1 min-h-full px-2.5 md:px-6"> 

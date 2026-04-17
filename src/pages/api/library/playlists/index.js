@@ -1,9 +1,23 @@
-import { client } from '../../../../lib/db';
+import { createSupabaseServerClient } from '../../../../lib/supabaseServer';
 
-export const GET = async () => {
+export const GET = async (context) => {
   try {
-    const res = await client.execute("SELECT * FROM playlists ORDER BY created_at DESC");
-    return new Response(JSON.stringify(res.rows), {
+    const supabase = createSupabaseServerClient(context);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+       return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const { data, error } = await supabase
+      .from('playlists')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify(data), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -13,20 +27,35 @@ export const GET = async () => {
   }
 };
 
-export const POST = async ({ request }) => {
+export const POST = async (context) => {
+  const { request } = context;
   try {
+    const supabase = createSupabaseServerClient(context);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+
     const { title, description } = await request.json();
     if (!title) return new Response(JSON.stringify({ error: 'Title is required' }), { status: 400 });
 
-    const id = `playlist-${Math.random().toString(36).substring(2, 11)}`;
-    const cover = 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=300&h=300'; // Default music cover
+    const cover = 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=300&h=300';
 
-    await client.execute({
-      sql: "INSERT INTO playlists (id, title, description, cover) VALUES (?, ?, ?, ?)",
-      args: [id, title, description || '', cover]
-    });
+    const { data, error } = await supabase
+      .from('playlists')
+      .insert({
+        user_id: user.id,
+        title,
+        description: description || '',
+        cover
+      })
+      .select()
+      .single();
 
-    return new Response(JSON.stringify({ id, title, description, cover }), { status: 201 });
+    if (error) throw error;
+
+    return new Response(JSON.stringify(data), { status: 201 });
   } catch (error) {
     console.error('Create Playlist error:', error);
     return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });

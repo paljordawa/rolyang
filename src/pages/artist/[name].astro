@@ -1,33 +1,54 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { client } from '../../lib/db';
+import { createSupabaseServerClient } from '../../lib/supabaseServer';
 
 const { name } = Astro.params;
 const artistName = decodeURIComponent(name || "");
 
+const supabase = createSupabaseServerClient(Astro);
+
 // Fetch all albums by this artist
-const artistAlbumsResult = await client.execute({
-  sql: "SELECT * FROM albums WHERE artist = ? ORDER BY id DESC",
-  args: [artistName]
-});
-const albums = artistAlbumsResult.rows as any[];
+const { data: albumsData } = await supabase
+  .from('albums')
+  .select('*')
+  .ilike('artist', artistName)
+  .order('id', { ascending: false });
+
+const albums = albumsData || [];
 
 // Fetch all tracks for these albums to show a "Popular Songs" section
 const allTracks: any[] = [];
 if (albums.length > 0) {
   const albumIds = albums.map(a => a.id);
-  const placeholders = albumIds.map(() => "?").join(",");
-  const tracksResult = await client.execute({
-    sql: `SELECT * FROM (
-            SELECT t.*, a.title as albumTitle, a.cover as albumCover,
-            (ROW_NUMBER() OVER (PARTITION BY t.album_id ORDER BY t.id) - 1) as trackIndex
-            FROM tracks t 
-            JOIN albums a ON t.album_id = a.id 
-            WHERE t.album_id IN (${placeholders})
-          ) ORDER BY trackIndex ASC, id ASC`,
-    args: albumIds
-  });
-  allTracks.push(...tracksResult.rows);
+  const { data: tracksData } = await supabase
+    .from('tracks')
+    .select('*, albums(title, cover)')
+    .in('album_id', albumIds)
+    .order('id', { ascending: true });
+
+  if (tracksData) {
+    // Process and sort tracks locally since complex window indexing is harder in generic Supabase SDK calls
+    const tracksByAlbum = {};
+    tracksData.forEach(t => {
+      if (!tracksByAlbum[t.album_id]) tracksByAlbum[t.album_id] = [];
+      tracksByAlbum[t.album_id].push(t);
+    });
+
+    for (const aId in tracksByAlbum) {
+      tracksByAlbum[aId].sort((a: any, b: any) => a.id.localeCompare(b.id)); // Assuming ID is sortable
+      tracksByAlbum[aId].forEach((t: any, index: number) => {
+        allTracks.push({
+          ...t,
+          albumTitle: t.albums?.title,
+          albumCover: t.albums?.cover,
+          trackIndex: index
+        });
+      });
+    }
+    
+    // Sort all tracks by track index mostly for "Popular" ranking simulation (first tracks from albums)
+    allTracks.sort((a, b) => a.trackIndex - b.trackIndex || a.id.localeCompare(b.id));
+  }
 }
 
 const featuredAlbum = albums[0] || { cover: "" };

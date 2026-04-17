@@ -1,6 +1,6 @@
 ---
 import Layout from "../../layouts/Layout.astro";
-import { client } from "../../lib/db";
+import { createSupabaseServerClient } from "../../lib/supabaseServer";
 import TrackTableHeader from "../../components/TrackTableHeader.astro";
 import TrackRow from "../../components/TrackRow.astro";
 import PlayButton from "../../components/PlayButton.astro";
@@ -24,31 +24,39 @@ let track: any = null;
 let chapters: any[] = [];
 let trackIndex = 0;
 
+const supabase = createSupabaseServerClient(Astro);
+
 if (id?.startsWith("track-")) {
   // New robust ID-based routing
   const trackIdStr = id.substring(6);
 
-  const trackResult = await client.execute({
-    sql: "SELECT * FROM tracks WHERE id = ? OR id = ?",
-    args: [trackIdStr, parseInt(trackIdStr, 10) || 0],
-  });
-  track = trackResult.rows[0];
+  const { data: trackData, error: trackError } = await supabase
+    .from('tracks')
+    .select('*')
+    .match({ id: trackIdStr })
+    .single();
+
+  track = trackData;
 
   if (track) {
-    const albumResult = await client.execute({
-      sql: "SELECT * FROM albums WHERE id = ? OR id = ? LIMIT 1",
-      args: [track.album_id.toString(), track.album_id],
-    });
-    album = albumResult.rows[0];
+    const { data: albumData } = await supabase
+      .from('albums')
+      .select('*')
+      .match({ id: track.album_id })
+      .single();
+    
+    album = albumData;
 
     if (album) {
-      const tracksResult = await client.execute({
-        sql: "SELECT * FROM tracks WHERE album_id = ? ORDER BY id ASC",
-        args: [album.id],
-      });
-      chapters = tracksResult.rows;
+      const { data: tracksData } = await supabase
+        .from('tracks')
+        .select('*')
+        .eq('album_id', album.id)
+        .order('id', { ascending: true });
+        
+      chapters = tracksData || [];
       trackIndex = chapters.findIndex(
-        (t) => t.id.toString() === track.id.toString(),
+        (t) => t.id.toString() === track.id.toString()
       );
       if (trackIndex === -1) trackIndex = 0;
     }
@@ -56,26 +64,28 @@ if (id?.startsWith("track-")) {
 } else {
   // Legacy routing (albumId-trackIndex)
   const lastHyphenIndex = id?.lastIndexOf("-") ?? -1;
-  const albumId =
-    lastHyphenIndex !== -1 ? id?.substring(0, lastHyphenIndex) : id;
-  const trackIndexStr =
-    lastHyphenIndex !== -1 ? id?.substring(lastHyphenIndex + 1) : "0";
+  const albumId = lastHyphenIndex !== -1 ? id?.substring(0, lastHyphenIndex) : id;
+  const trackIndexStr = lastHyphenIndex !== -1 ? id?.substring(lastHyphenIndex + 1) : "0";
   trackIndex = parseInt(trackIndexStr || "0", 10);
 
   // Fetch album details
-  const albumResult = await client.execute({
-    sql: "SELECT * FROM albums WHERE id = ? LIMIT 1",
-    args: [albumId || ""],
-  });
-  album = albumResult.rows[0] as any;
+  const { data: albumData } = await supabase
+    .from('albums')
+    .select('*')
+    .match({ id: albumId })
+    .single();
+    
+  album = albumData;
 
   // Fetch all tracks for this album
   if (album) {
-    const tracksResult = await client.execute({
-      sql: "SELECT * FROM tracks WHERE album_id = ? ORDER BY id ASC",
-      args: [albumId || ""],
-    });
-    chapters = tracksResult.rows;
+    const { data: tracksData } = await supabase
+      .from('tracks')
+      .select('*')
+      .eq('album_id', album.id)
+      .order('id', { ascending: true });
+      
+    chapters = tracksData || [];
     track = chapters[trackIndex];
   }
 }
