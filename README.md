@@ -32,10 +32,10 @@ A modern, responsive audio player web application built with Astro and React. St
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [Astro](https://astro.build) v4.0.0
-- **UI Library**: React 18.0.0
-- **Styling**: Tailwind CSS 3.0.0
-- **Build Tool**: Astro (Vite-based)
+- **Framework**: [Astro](https://astro.build)
+- **Database & Auth**: [Supabase](https://supabase.com)
+- **UI Library**: React
+- **Styling**: Tailwind CSS
 - **Package Manager**: pnpm
 
 ## 📁 Project Structure
@@ -99,7 +99,15 @@ audiobook/
    - Add album cover images to `public/thumbnail/`
    - Update `src/data/data.json` with your album and track information
 
-4. **Configure albums**
+4. **Configure Environment Variables**
+
+   Create a `.env` file in the root directory and add your Supabase credentials:
+   ```env
+   PUBLIC_SUPABASE_URL=your-project-url
+   PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   ```
+
+5. **Configure albums**
 
    - Edit `src/data/data.json` to add/modify albums
    - Each album should have:

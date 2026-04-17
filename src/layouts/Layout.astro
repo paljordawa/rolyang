@@ -88,64 +88,23 @@ const ogImageUrl = siteOrigin ? new URL(ogImagePath, siteOrigin).toString() : og
     <ClientRouter />
     <!-- client-only module for navigation and player helpers -->
     <!-- Define playerPlay FIRST, before any other scripts -->
-    <script is:inline>
-      // Initialize a stub for playerPlay that buffers track requests until the player hydrates
-      window.playerPlay = window.playerPlay || function (payload) {
-        try { 
-          console.log('playerPlay (stub) called:', payload);
-          window.dispatchEvent(new CustomEvent('player:play', { detail: payload })); 
+    <script>
+      import { navigate } from 'astro:transitions/client';
 
-          if (window.__nanostores_player) {
-            window.__nanostores_player.updateTrack(payload.bookId, payload.chapIndex, payload.play !== false, payload.trackId);
-          }
-        } catch (e) { 
-          console.error('playerPlay stub error:', e);
-        }
+      // Maps the legacy appNavigate to Astro's official router
+      (window as any).appNavigate = (href: string) => {
+        console.log('[App] Navigating to:', href);
+        navigate(href);
+      };
+
+      // Define playerPlay FIRST
+      (window as any).playerPlay = (window as any).playerPlay || function (payload: any) {
+        window.dispatchEvent(new CustomEvent('player:play', { detail: payload }));
       };
     </script>
-    <script is:inline>
-// Client helpers for SPA-like navigation and global player control
-// - appNavigate(href): fetches page and swaps <main> content
-// - playerPlay(payload): dispatches player:play
 
-console.log('App client script loaded');
-
+    <script>
 (function() {
-
-async function appNavigate(href) {
-  try {
-    const res = await fetch(href, { cache: 'no-store' });
-    if (!res.ok) { location.href = href; return; }
-    const html = await res.text();
-    const tmp = document.createElement('div'); tmp.innerHTML = html;
-    const newMain = tmp.querySelector('main');
-    if (!newMain) { location.href = href; return; }
-    const curMain = document.querySelector('main');
-    if (!curMain) { location.href = href; return; }
-    // Replace contents
-    curMain.innerHTML = newMain.innerHTML;
-
-    // Execute scripts from the fetched main (inline and external)
-    newMain.querySelectorAll('script').forEach((s) => {
-      const next = document.createElement('script');
-      if (s.src) next.src = s.src;
-      if (s.type) next.type = s.type;
-      if (s.textContent) next.textContent = s.textContent;
-      document.head.appendChild(next);
-      // remove after executed
-      setTimeout(() => next.remove(), 1000);
-    });
-
-    // update title if present
-    const titleEl = tmp.querySelector('title'); if (titleEl) document.title = titleEl.innerText;
-    history.pushState({}, '', href);
-    window.dispatchEvent(new Event('app:navigation'));
-  } catch (e) {
-    location.href = href;
-  }
-}
-window.appNavigate = appNavigate;
-
 // delegation for player actions using data attributes
 function setupPlayerClickHandler() {
   document.addEventListener('click', function(ev) {
@@ -195,42 +154,7 @@ if (document.readyState === 'loading') {
   setupPlayerClickHandler();
 }
 
-// link delegation for internal navigation
-document.addEventListener('click', async (ev) => {
-  if (ev.defaultPrevented) return;
-  const anyEv = ev;
-  const target = anyEv.target;
-
-  // Handle data-nav-artist specifically first (allows nested links)
-  const artistEl = (target && target.closest) ? target.closest('[data-nav-artist]') : null;
-  if (artistEl) {
-    ev.preventDefault();
-    ev.stopPropagation();
-    var name = artistEl.getAttribute('data-nav-artist');
-    if (name) {
-      if (window.appNavigate) {
-        window.appNavigate('/artist/' + encodeURIComponent(name));
-      }
-    }
-    return;
-  }
-
-  let el = anyEv.target;
-  while (el && el.nodeName !== 'A') el = el.parentElement;
-  if (!el || el.nodeName !== 'A') return;
-  const href = el.getAttribute && el.getAttribute('href');
-  if (!href || (href.startsWith('http') && !href.startsWith(location.origin))) return; // external
-  if ((el.hasAttribute && el.hasAttribute('data-no-route')) || el.target === '_blank') return;
-  ev.preventDefault();
-  // @ts-ignore
-  if (window.appNavigate) window.appNavigate(href);
-});
-
-// popstate -> navigate
-window.addEventListener('popstate', () => {
-  const href = location.pathname + location.search + location.hash;
-  appNavigate(href);
-});
+// No manual popstate. ClientRouter handles this natively.
 
 // simple share button handling
 document.addEventListener('click', (ev) => {
@@ -256,10 +180,10 @@ if (document.readyState === 'loading') {
 console.log('Script initialization complete, window.playerPlay:', typeof window.playerPlay);
     </script>
   </head>
-  <body class="bg-[#000000] text-white h-[100dvh] overflow-hidden flex flex-col font-sans select-none">
-    <div class="flex-1 flex overflow-hidden md:p-2 md:gap-2 h-full md:h-[calc(100svh-95px)] relative">
+  <body class="bg-surface-base text-white h-[100dvh] overflow-hidden flex flex-col font-sans select-none">
+    <div class="flex-1 flex overflow-hidden md:p-3 md:gap-3 h-full md:h-[calc(100svh-95px)] relative">
       <!-- Left Sidebar (Desktop only) -->
-      <aside class="hidden md:flex flex-col w-64 lg:w-80 bg-[#121212] rounded-lg overflow-hidden flex-shrink-0">
+      <aside class="hidden md:flex flex-col w-64 lg:w-80 bg-surface-panel/40 backdrop-blur-xl border border-white/5 rounded-xl overflow-hidden flex-shrink-0">
         <!-- Home / Search Nav -->
         <nav class="p-5 space-y-4">
           <a href="/" class="flex items-center gap-5 text-white/70 hover:text-white transition-colors duration-200">
@@ -273,7 +197,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
         </nav>
 
         <!-- Library Section -->
-        <div class="flex-1 mt-2 bg-[#121212] rounded-lg p-3 flex flex-col overflow-hidden">
+        <div class="flex-1 mt-2 bg-white/5 rounded-xl p-3 flex flex-col overflow-hidden">
           <div class="flex items-center justify-between text-white/70 hover:text-white transition-colors duration-200 mb-4 px-2 cursor-pointer group">
             <div class="flex items-center gap-3">
               <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 016.5 2H20v20H6.5a2.5 2.5 0 010-5H20"/></svg>
@@ -431,12 +355,13 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
                   <div class="text-sm font-medium truncate text-white flex items-center gap-2">
                     ${item.title}
                     ${item.isFollowed ? '<div class="w-2 h-2 rounded-full bg-[#1db954]"></div>' : ''}
+                    ${item.isFollowed ? '<div class="w-2 h-2 rounded-full bg-brand-primary"></div>' : ''}
                   </div>
                   <div class="text-[12px] text-white/50 truncate mt-0.5">${item.isArtist ? 'Artist' : (item.isLikedSongs ? `Playlist • ${item.count} songs` : (item.isSong ? item.artist : 'Album • ' + (item.artist || '')))}</div>
                 </div>
                 ${item.isSong ? `
                 <div class="opacity-0 group-hover:opacity-100 transition-opacity pr-2">
-                  <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-[#1db954]"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+                  <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-brand-primary drop-shadow-[0_0_8px_rgba(99,102,241,0.4)]"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
                 </div>` : ''}
               </a>
             `;
@@ -638,9 +563,9 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
       </script>
 
       <!-- Main Content Area -->
-      <main id="main-content" class="flex-1 bg-[#121212] rounded-lg overflow-y-auto overflow-x-hidden relative">
+      <main id="main-content" class="flex-1 bg-surface-base border border-white/5 rounded-xl overflow-y-auto overflow-x-hidden relative shadow-2xl">
          <!-- Top sticky header -->
-         <header id="main-header" class="sticky top-0 z-40 bg-transparent flex items-center justify-between px-4 md:px-6 py-4 transition-all duration-300">
+         <header id="main-header" class="sticky top-0 z-40 bg-transparent flex items-center justify-between px-4 md:px-6 py-5 transition-all duration-300">
             <div class="flex gap-2">
                <a href={backHref || "/"} class="w-8 h-8 rounded-full bg-black/70 flex items-center justify-center text-white/70 hover:text-white cursor-pointer hover:bg-black/90 transition">
                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -652,8 +577,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
             
              <div class="flex items-center gap-3 md:gap-4 relative">
                {user ? (
-                 <div class="flex items-center gap-3">
-                   <button class="hidden md:block rounded-full bg-white text-black font-bold text-[13px] px-4 py-1.5 hover:scale-105 transition">Premium</button>
+                  <div class="flex items-center gap-3">
                    
                    <!-- Profile Dropdown Container -->
                    <div class="relative" id="profile-menu-container">
@@ -667,6 +591,11 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
                          user.email?.charAt(0).toUpperCase() || 'U'
                        )}
                      </div>
+                     
+                     <!-- Premium Indicator Icon -->
+                     <div class="absolute -top-1 -right-1.5 w-3.5 h-3.5 bg-yellow-400 rounded-full border-[1.5px] border-[#121212] flex items-center justify-center shadow-md z-10 pointer-events-none" title="Premium Member">
+                        <svg width="6" height="6" viewBox="0 0 24 24" fill="currentColor" class="text-black"><path d="M12 2l2.4 7.4h7.6l-6.2 4.4 2.4 7.4-6.2-4.6-6.2 4.6 2.4-7.4-6.2-4.4h7.6z"/></svg>
+                     </div>
 
                      <!-- Dropdown Menu -->
                      <div 
@@ -677,13 +606,23 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
                           <p class="text-sm font-medium text-white truncate">{user.user_metadata?.full_name || 'User'}</p>
                           <p class="text-xs text-white/50 truncate max-w-[160px]">{user.email}</p>
                         </div>
-                        <a href="/library" class="block px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer w-full text-left">Your Library</a>
-                        <button 
-                          id="logout-btn"
-                          class="block px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer w-full text-left border-t border-white/5"
-                        >
-                          Log out
-                        </button>
+                        <div class="py-1">
+                          <a href="/library" class="block px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer w-full text-left">Your Library</a>
+                          <a href="#" class="block px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer w-full text-left">Profile</a>
+                          <a href="#" class="block px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer w-full text-left">Settings</a>
+                        </div>
+                        <div class="py-1 border-t border-white/5">
+                          <a href="/privacy" class="block px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer w-full text-left">Privacy Policy</a>
+                          <a href="/terms" class="block px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer w-full text-left">Terms of Service</a>
+                        </div>
+                        <div class="py-1 border-t border-white/5">
+                          <button 
+                            id="logout-btn"
+                            class="block px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer w-full text-left"
+                          >
+                            Log out
+                          </button>
+                        </div>
                      </div>
                    </div>
                  </div>
@@ -748,13 +687,15 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
         if(mainContent && mainHeader) {
           mainContent.addEventListener('scroll', () => {
             if (mainContent.scrollTop > 40) {
-              mainHeader.style.backgroundColor = 'rgba(18, 18, 18, 0.95)';
-              mainHeader.style.backdropFilter = 'blur(10px)';
-              mainHeader.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+              mainHeader.style.backgroundColor = 'rgba(15, 17, 26, 0.85)';
+              mainHeader.style.backdropFilter = 'blur(12px)';
+              mainHeader.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+              mainHeader.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
             } else {
               mainHeader.style.backgroundColor = 'transparent';
               mainHeader.style.backdropFilter = 'none';
               mainHeader.style.boxShadow = 'none';
+              mainHeader.style.borderBottom = 'none';
             }
           });
         }
@@ -773,7 +714,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
    
     <!-- Bottom Player Island -->
     <div
-      class="fixed md:absolute left-2 right-2 md:left-0 md:right-0 bottom-[64px] md:bottom-0 z-50 md:h-[95px] md:bg-black transition-all duration-300 player-wrapper bg-black/90 backdrop-blur-md rounded-xl md:rounded-none shadow-2xl border border-white/5 overflow-hidden"
+      class="fixed md:absolute left-2 right-2 md:left-4 md:right-4 bottom-[74px] md:bottom-4 z-50 md:h-[100px] transition-all duration-500 player-wrapper bg-surface-panel/80 backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] border border-white/10 overflow-hidden"
       data-player-shell
       data-hidden={hidePlayerUntilPlaying ? 'true' : 'false'}
       transition:persist="player-shell"
@@ -820,11 +761,11 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
              } else {
                ftr.style.transform = 'translateY(0)';
                if(window.innerWidth < 768 && shell) {
-                  shell.style.bottom = '64px';
-                  shell.style.left = '8px';
-                  shell.style.right = '8px';
-                  shell.style.borderRadius = '12px';
-                  shell.style.height = '72px';
+                  shell.style.bottom = '70px';
+                  shell.style.left = '10px';
+                  shell.style.right = '10px';
+                  shell.style.borderRadius = '16px';
+                  shell.style.height = '62px';
                   shell.style.zIndex = '50';
                }
              }
@@ -840,10 +781,10 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
       <>
     <style is:global>
       [data-player-row][data-active="true"] [data-player-title] {
-        color: #1db954 !important;
+        color: #6366f1 !important;
       }
       [data-player-row][data-active="true"] [data-index-label] {
-        color: #1db954 !important;
+        color: #6366f1 !important;
       }
       [data-player-shell][data-hidden="true"]{opacity:0;pointer-events:none;transform:translateY(24px);}
     </style>

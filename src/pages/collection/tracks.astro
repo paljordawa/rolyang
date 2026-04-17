@@ -4,19 +4,19 @@ import Layout from '../../layouts/Layout.astro';
 <Layout title="Liked Songs" hideNav>
   <div class="relative min-h-screen">
     <!-- Immersive Header Background -->
-    <div class="absolute top-0 left-0 right-0 h-[400px] -z-10 bg-gradient-to-b from-[#450af5] to-[#121212] opacity-40"></div>
-    <div class="absolute top-0 left-0 right-0 h-[400px] -z-20 bg-[#121212]"></div>
+    <div class="absolute top-0 left-0 right-0 h-[400px] -z-10 bg-gradient-to-b from-brand-primary/20 via-brand-secondary/5 to-surface-base opacity-60"></div>
+    <div class="absolute top-0 left-0 right-0 h-[400px] -z-20 bg-surface-base"></div>
 
     <div class="pt-20 px-6 md:px-8 pb-8">
       <!-- Hero Header -->
       <div class="flex flex-col md:flex-row items-end gap-6 md:gap-8 mb-8">
-        <div class="w-48 h-48 md:w-60 md:h-60 shrink-0 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden bg-gradient-to-br from-[#450af5] to-[#8e8ee5] flex items-center justify-center">
-          <svg class="w-24 h-24 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
+        <div class="w-48 h-48 md:w-60 md:h-60 shrink-0 shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center ring-1 ring-white/10">
+          <svg class="w-24 h-24 text-white drop-shadow-2xl" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
         </div>
         
         <div class="flex flex-col gap-2">
           <span class="text-xs font-bold uppercase tracking-wider text-white/90">Playlist</span>
-          <h1 class="text-4xl md:text-7xl font-black text-white tracking-tighter mb-2 leading-tight">
+          <h1 class="text-4xl md:text-7xl font-heading font-extrabold text-white tracking-tight mb-2 leading-tight drop-shadow-xl">
             Liked Songs
           </h1>
           <div class="flex items-center flex-wrap gap-2 text-sm font-bold text-white">
@@ -110,7 +110,7 @@ import Layout from '../../layouts/Layout.astro';
 
     container.innerHTML = likedTracks.map((track, i) => `
       <div 
-        class="grid grid-cols-[16px_4fr_2fr_2fr_2fr_2fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 rounded-md transition-colors hover:bg-white/10 group cursor-default items-center"
+        class="grid grid-cols-[16px_4fr_2fr_2fr_2fr_2fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 rounded transition-colors hover:bg-white/10 group cursor-default items-center"
         data-player-row
         data-track-id="${track.trackId}"
         data-track-title="${track.title}"
@@ -134,7 +134,11 @@ import Layout from '../../layouts/Layout.astro';
             <img src="${track.albumCover}" alt="" class="w-full h-full object-cover" />
           </div>
           <div class="flex flex-col min-w-0">
-            <a href="/song/${track.albumId}-${track.trackIndex}" class="text-base font-bold text-white truncate hover:underline cursor-pointer block max-w-fit">${track.title}</a>
+            <a href="/song/${track.albumId}-${track.trackIndex}" class="text-base font-medium text-white truncate hover:underline cursor-pointer block max-w-fit">${track.title}</a>
+            <span 
+              class="text-sm font-normal text-white/50 truncate hover:text-white cursor-pointer hover:underline block max-w-fit mt-0.5"
+              onclick="window.appNavigate('/artist/${encodeURIComponent(track.albumArtist)}')"
+            >${track.albumArtist}</span>
           </div>
         </div>
 
@@ -171,7 +175,7 @@ import Layout from '../../layouts/Layout.astro';
              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
            </button>
            <button class="js-like-btn" data-album-id="${track.albumId}" data-chap-id="${track.trackId}">
-              <svg class="w-4 h-4 filled-heart text-[#1db954]" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
+              <svg class="w-4 h-4 filled-heart text-brand-primary drop-shadow-[0_0_5px_rgba(99,102,241,0.6)]" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
               <svg class="w-4 h-4 empty-heart text-white/50 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
            </button>
           <span class="text-sm text-white/60 tabular-nums w-12 text-right">${track.duration}</span>

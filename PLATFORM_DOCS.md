@@ -70,10 +70,10 @@ To ensure audio keeps playing when the app is minimized:
 
 ### Phase 2: Data & Backend
 
-- **Turso Database:** Migrating to relational SQLite on the edge for 'Liked Songs' and 'Followed Artists'.
+- **Supabase:** Migrating to Postgres on the edge for 'Liked Songs', 'Followed Artists', and User Authentication.
 
 > [!WARNING]
-> **Database Sync Incident:** Previously, switching the local app to sync with a fresh, empty remote Turso database caused the local App to crash. Because the app expected the remote Turso DB to be the "source of truth", it synced down the remote's empty state (wiping or ignoring local schema). To fix this in the future: Always seed the remote Turso database FIRST using `Turso shell` or seeding scripts with environment variables (`TURSO_DATABASE_URL`) before connecting the local codebase as an embedded replica. Also, NEVER commit `local.db` to Git, as SQLite binaries cannot be merged and will corrupt via conflict markers!
+> **Supabase Migration:** When migrating from local environments or other systems, ensure the Supabase SQL schema (previously in `supabase_schema.sql`) has been applied to the production project first. Use migration scripts if you need to move data from legacy SQLite `local.db` files. NEVER commit sensitive Supabase Service Role keys to Git.
 
 ### Phase 3: Persistent State (Nanostores)
 

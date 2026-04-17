@@ -78,10 +78,8 @@ const featuredAlbum = albums[0] || { cover: "" };
       <!-- Actions -->
       <div class="flex items-center gap-6 mb-12">
         <button 
-          class="w-14 h-14 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl hover:scale-105 active:scale-95 transition-all"
-          data-player-album={allTracks[0]?.album_id}
-          data-player-chap={0}
-          data-track-id={allTracks[0]?.id}
+          id="play-all-liked"
+          class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center text-white shadow-xl hover:scale-105 active:scale-95 transition-all"
         >
           <svg viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
         </button>
@@ -102,7 +100,7 @@ const featuredAlbum = albums[0] || { cover: "" };
         <div class="space-y-1">
           {allTracks.slice(0, 5).map((track, i) => (
             <div 
-              class="grid grid-cols-[16px_4fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 rounded-md transition-colors hover:bg-white/10 group cursor-default items-center"
+              class="grid grid-cols-[16px_4fr_2fr_minmax(120px,1fr)] gap-4 px-4 py-2 rounded transition-colors hover:bg-white/10 group cursor-default items-center"
               data-player-row
               data-player-album={track.album_id}
               data-player-chap={track.trackIndex}
@@ -144,7 +142,7 @@ const featuredAlbum = albums[0] || { cover: "" };
                   aria-label="Like track"
                 >
                   <svg class="empty-heart w-5 h-5 text-white/40 hover:text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                  <svg class="filled-heart w-5 h-5 text-[#1db954] hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                  <svg class="filled-heart w-5 h-5 text-brand-primary hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                 </button>
                 <span class="w-10 text-right">{track.duration}</span>
               </div>
@@ -156,25 +154,29 @@ const featuredAlbum = albums[0] || { cover: "" };
       <!-- Albums Grid -->
       <div>
         <h2 class="text-2xl font-bold text-white mb-6">Albums</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+        <div class="flex overflow-x-auto gap-5 pb-6 no-scrollbar -mx-4 px-4 snap-x">
           {albums.map(album => (
-            <a 
-              href={`/album/${album.id}`}
-              class="flex flex-col p-4 bg-[#181818] hover:bg-[#282828] transition-all duration-300 rounded-lg group cursor-pointer"
-            >
-              <div class="aspect-square w-full mb-4 relative shadow-[0_8px_24px_rgba(0,0,0,0.5)] rounded-md overflow-hidden">
-                <img src={album.cover} alt={album.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <button 
-                  class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105"
-                  data-player-album={album.id}
-                  data-player-chap={0}
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
-                </button>
-              </div>
-              <div class="font-bold text-base truncate text-white mb-1">{album.title}</div>
-              <div class="text-sm text-white/70 truncate">{album.artist}</div>
-            </a>
+            <div class="w-44 md:w-52 shrink-0 snap-start">
+              <a 
+                href={`/album/${album.id}`}
+                class="flex flex-col bg-surface-panel/30 backdrop-blur-md hover:bg-white/10 border border-white/5 transition-all duration-500 rounded-lg group cursor-pointer overflow-hidden h-full"
+              >
+                <div class="aspect-square w-full mb-3 relative shadow-[0_20px_40px_rgba(0,0,0,0.6)] overflow-hidden ring-1 ring-white/10">
+                  <img src={album.cover} alt={album.title} class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+                  <button 
+                    class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center text-white shadow-2xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105"
+                    data-player-album={album.id}
+                    data-player-chap={0}
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+                  </button>
+                </div>
+                <div class="px-3 pb-3">
+                  <div class="font-bold text-base truncate text-white mb-1 group-hover:underline">{album.title}</div>
+                  <div class="text-sm text-white/70 truncate">{album.artist}</div>
+                </div>
+              </a>
+            </div>
           ))}
         </div>
       </div>

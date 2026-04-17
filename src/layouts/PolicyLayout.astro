@@ -1,0 +1,48 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import "../styles.css";
+
+const { title } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title} | Rolyang</title>
+    <ClientRouter />
+  </head>
+  <body class="bg-[#0a0b10] text-white min-h-screen flex flex-col font-sans selection:bg-brand-primary/30">
+    <!-- Background Glows -->
+    <div class="fixed top-0 left-0 w-full h-full -z-10 overflow-hidden pointer-events-none">
+      <div class="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-brand-primary/10 rounded-full blur-[120px]"></div>
+      <div class="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-brand-secondary/10 rounded-full blur-[120px]"></div>
+    </div>
+
+    <header class="py-10 px-6 max-w-4xl mx-auto w-full flex items-center justify-between">
+      <a href="/login" class="flex items-center gap-2 group text-white/60 hover:text-white transition-colors duration-300">
+        <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        <span class="text-sm font-bold uppercase tracking-wider">Back to Login</span>
+      </a>
+      <div class="flex items-center gap-3">
+        <img src="/rolyang-logo.svg" alt="Logo" class="w-8 h-8" />
+        <span class="font-heading font-extrabold text-xl tracking-tighter">Rolyang</span>
+      </div>
+    </header>
+
+    <main class="flex-1 px-6 pb-20 max-w-4xl mx-auto w-full">
+      <div class="luminous-glass rounded-3xl p-8 md:p-12 shadow-2xl border border-white/5">
+        <h1 class="text-4xl md:text-5xl font-heading font-extrabold mb-8 tracking-tight text-white drop-shadow-lg">
+          {title}
+        </h1>
+        <div class="prose prose-invert prose-brand max-w-none prose-p:text-white/70 prose-headings:text-white prose-strong:text-brand-primary prose-li:text-white/70">
+          <slot />
+        </div>
+      </div>
+    </main>
+
+    <footer class="py-10 text-center text-white/30 text-xs font-medium">
+      &copy; {new Date().getFullYear()} Rolyang. All rights reserved.
+    </footer>
+  </body>
+</html>

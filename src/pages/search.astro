@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 ---
 <Layout title="Search">
   <div class="px-2.5 pt-3 md:pt-10 max-w-7xl mx-auto">
-    <div class="sticky top-0 z-20 bg-[#121212] pb-6 pt-1">
+    <div class="sticky top-0 z-20 bg-surface-base/80 backdrop-blur-xl pb-6 pt-5 -mx-4 px-4">
       <div class="relative max-w-lg">
         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-5 h-5 text-gray-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -12,7 +12,7 @@ import Layout from '../layouts/Layout.astro';
           type="text" 
           id="search-input"
           placeholder="What do you want to listen to?" 
-          class="w-full h-12 bg-white/10 hover:bg-white/20 border-none rounded-full pl-12 pr-4 text-white text-sm font-semibold placeholder:text-gray-400 focus:bg-[#282828] focus:ring-2 focus:ring-white transition-all outline-none"
+          class="w-full h-14 bg-white/10 hover:bg-white/15 border border-transparent rounded-lg pl-12 pr-4 text-white text-base font-medium placeholder:text-white/60 focus:bg-white/15 focus:ring-2 focus:ring-white/20 transition-all outline-none"
         />
       </div>
     </div>
@@ -31,7 +31,7 @@ import Layout from '../layouts/Layout.astro';
       <!-- Playlists Section -->
       <section id="section-playlists" class="hidden">
         <h2 class="text-2xl font-bold text-white mb-4">Playlists</h2>
-        <div id="results-playlists" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+        <div id="results-playlists" class="flex overflow-x-auto gap-5 pb-6 no-scrollbar -mx-4 px-4 snap-x">
           <!-- Playlist cards -->
         </div>
       </section>
@@ -39,7 +39,7 @@ import Layout from '../layouts/Layout.astro';
       <!-- Artists Section -->
       <section id="section-artists" class="hidden">
         <h2 class="text-2xl font-bold text-white mb-4">Artists</h2>
-        <div id="results-artists" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+        <div id="results-artists" class="flex overflow-x-auto gap-5 pb-6 no-scrollbar -mx-4 px-4 snap-x">
           <!-- Artist cards -->
         </div>
       </section>
@@ -47,7 +47,7 @@ import Layout from '../layouts/Layout.astro';
       <!-- Albums Section -->
       <section id="section-albums" class="hidden">
         <h2 class="text-2xl font-bold text-white mb-4">Albums</h2>
-        <div id="results-albums" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+        <div id="results-albums" class="flex overflow-x-auto gap-5 pb-6 no-scrollbar -mx-4 px-4 snap-x">
           <!-- Album cards -->
         </div>
       </section>
@@ -59,10 +59,21 @@ import Layout from '../layouts/Layout.astro';
 
     </div>
 
+    <!-- Recent Searches View -->
+    <div id="recent-searches-container" class="hidden mb-12 animate-fade-in">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-heading font-bold text-2xl text-white">Recent searches</h2>
+        <button id="clear-history-btn" class="text-xs font-bold text-white/50 hover:text-white transition-all uppercase tracking-wider">Clear all</button>
+      </div>
+      <div id="history-list" class="flex flex-wrap gap-3">
+        <!-- History chips injected here -->
+      </div>
+    </div>
+
     <!-- Default Browse View -->
     <div id="search-browse-all">
-      <h2 class="text-2xl font-bold text-white mb-6">Browse all</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      <h2 class="font-heading font-bold text-2xl text-white mb-8">Browse all</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
         {[
           { title: 'Podcasts', color: 'bg-[#e8115b]' },
           { title: 'Live Events', color: 'bg-[#8d67ab]' },
@@ -75,10 +86,10 @@ import Layout from '../layouts/Layout.astro';
           { title: 'Charts', color: 'bg-[#8d67ab]' },
           { title: 'Educational', color: 'bg-[#503750]' },
         ].map((cat) => (
-          <div class={`${cat.color} aspect-square rounded-lg p-4 relative overflow-hidden group cursor-pointer hover:scale-105 transition-transform duration-300`}>
+          <div class={`${cat.color} aspect-square rounded-md p-4 relative overflow-hidden group cursor-pointer hover:scale-105 transition-transform duration-300`}>
             <span class="text-xl font-bold text-white break-words">{cat.title}</span>
             <div class="absolute -right-4 -bottom-4 w-24 h-24 rotate-[25deg] shadow-lg group-hover:scale-110 transition-transform">
-               <div class="w-full h-full bg-white/20 rounded-md ring-1 ring-white/10 flex items-center justify-center p-2">
+               <div class="w-full h-full bg-white/20 rounded ring-1 ring-white/10 flex items-center justify-center p-2">
                  <img src="https://i.scdn.co/image/ab67706f00000002b6623631627993077af2c6f1" class="w-full h-full object-cover" alt="" />
                </div>
             </div>
@@ -96,8 +107,79 @@ import Layout from '../layouts/Layout.astro';
     const input = document.getElementById('search-input') as HTMLInputElement | null;
     const resultsContainer = document.getElementById('search-results-container');
     const browseAll = document.getElementById('search-browse-all');
-    console.debug('[search] initSearch', { pathname: location.pathname, hasInput: !!input });
-    if (!input || !resultsContainer || !browseAll) return;
+    const recentSearchesContainer = document.getElementById('recent-searches-container');
+    const historyList = document.getElementById('history-list');
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+
+    console.log('[Search] Initialized with History');
+    if (!input || !resultsContainer || !browseAll || !recentSearchesContainer || !historyList) return;
+
+    const MAX_HISTORY = 10;
+    const HISTORY_KEY = 'rolyang:search_history';
+
+    function getHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+    }
+
+    function saveHistory(query: string) {
+      if (!query.trim()) return;
+      let history = getHistory();
+      history = [query, ...history.filter((h: string) => h !== query)].slice(0, MAX_HISTORY);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      renderHistory();
+    }
+
+    function removeHistory(query: string) {
+      let history = getHistory();
+      history = history.filter((h: string) => h !== query);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const history = getHistory();
+      if (history.length === 0 || input?.value !== '') {
+        recentSearchesContainer?.classList.add('hidden');
+        return;
+      }
+
+      recentSearchesContainer?.classList.remove('hidden');
+      if (historyList) {
+        historyList.innerHTML = history.map((h: string) => `
+          <div class="group flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full border border-white/5 cursor-pointer transition-all duration-300" data-history-query="${h}">
+            <span class="text-sm font-medium text-white/80 group-hover:text-white">${h}</span>
+            <button class="js-remove-history flex items-center justify-center w-4 h-4 rounded-full hover:bg-white/20 text-white/40 hover:text-white transition-all ml-1" data-remove-query="${h}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-2.5 h-2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+        `).join('');
+        
+        // Wire up clicks
+        historyList.querySelectorAll('[data-history-query]').forEach(el => {
+           el.addEventListener('click', (e) => {
+             if ((e.target as HTMLElement).closest('.js-remove-history')) return;
+             const query = el.getAttribute('data-history-query');
+             if (query && input) {
+               input.value = query;
+               input.dispatchEvent(new Event('input', { bubbles: true }));
+             }
+           });
+        });
+
+        historyList.querySelectorAll('.js-remove-history').forEach(el => {
+           el.addEventListener('click', (e) => {
+             e.stopPropagation();
+             const query = (el as HTMLElement).getAttribute('data-remove-query');
+             if (query) removeHistory(query);
+           });
+        });
+      }
+    }
+
+    clearHistoryBtn?.addEventListener('click', () => {
+      localStorage.removeItem(HISTORY_KEY);
+      renderHistory();
+    });
 
     const sections = {
       songs: { el: document.getElementById('section-songs'), grid: document.getElementById('results-songs') },
@@ -116,8 +198,11 @@ import Layout from '../layouts/Layout.astro';
       if (query === '') {
         resultsContainer.classList.add('hidden');
         browseAll.classList.remove('hidden');
+        renderHistory();
         return;
       }
+
+      recentSearchesContainer.classList.add('hidden');
 
       debounceTimer = setTimeout(async () => {
         try {
@@ -134,16 +219,21 @@ import Layout from '../layouts/Layout.astro';
           const data = await res.json();
           let hasAny = false;
 
+          // Save to history if we found results
+          if (data.songs?.length > 0 || data.albums?.length > 0 || data.artists?.length > 0 || data.playlists?.length > 0) {
+            saveHistory(query);
+          }
+
           if (data.songs?.length > 0) {
             hasAny = true;
             sections.songs.el?.classList.remove('hidden');
             if (sections.songs.grid) {
               sections.songs.grid.innerHTML = data.songs.map((song: any) => `
-                <div class="flex items-center gap-4 p-2 rounded-md hover:bg-white/10 group transition-colors cursor-pointer" data-play-song='${JSON.stringify({bookId: song.album_id, chapIndex: song.trackIndex, trackId: song.id, title: song.title, artist: song.albumArtist})}'>
-                  <div class="w-10 h-10 shrink-0 relative overflow-hidden rounded bg-white/5 shadow-md">
-                    <img src="${song.albumCover}" class="w-full h-full object-cover" />
+                <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 group transition-all duration-300 cursor-pointer border border-transparent hover:border-white/5" data-play-song='${JSON.stringify({bookId: song.album_id, chapIndex: song.trackIndex, trackId: song.id, title: song.title, artist: song.albumArtist}).replace(/'/g, "&apos;")}'>
+                  <div class="w-12 h-12 shrink-0 relative overflow-hidden rounded-lg bg-white/5 shadow-lg ring-1 ring-white/5">
+                    <img src="${song.albumCover}" class="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
                     <div class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-white"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+                      <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-white drop-shadow-lg"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
                     </div>
                   </div>
                   <div class="flex-1 min-w-0">
@@ -158,7 +248,7 @@ import Layout from '../layouts/Layout.astro';
                     <button class="js-add-to-playlist-btn text-white/50 hover:text-white transition p-1" data-track-id="${song.id}"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
                     <button class="js-like-btn text-white/50 hover:text-white transition p-1" data-album-id="${song.album_id}" data-chap-id="${song.id}">
                       <svg class="w-4 h-4 empty-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                      <svg class="w-4 h-4 filled-heart text-[#1db954] hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
+                      <svg class="w-4 h-4 filled-heart text-brand-primary drop-shadow-[0_0_5px_rgba(99,102,241,0.6)] hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
                     </button>
                     <div class="text-[13px] text-white/50 tabular-nums">${song.duration || '0:00'}</div>
                   </div>
@@ -172,13 +262,17 @@ import Layout from '../layouts/Layout.astro';
             sections.playlists.el?.classList.remove('hidden');
             if (sections.playlists.grid) {
               sections.playlists.grid.innerHTML = data.playlists.map((pl: any) => `
-                <div class="flex flex-col p-4 bg-[#181818] hover:bg-[#282828] transition-all duration-300 rounded-lg group cursor-pointer" data-nav-playlist="${pl.id}">
-                  <div class="aspect-square w-full mb-4 relative shadow-[0_8px_24px_rgba(0,0,0,0.5)] rounded-md overflow-hidden ${pl.isLikedSongs ? 'bg-gradient-to-br from-[#450af5] to-[#8e8ee5] flex items-center justify-center' : 'bg-white/5'}">
-                    ${pl.isLikedSongs ? `<svg class="w-1/2 h-1/2 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>` : `<img src="${pl.cover}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />`}
-                    <button class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105"><svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg></button>
+                <div class="w-44 md:w-52 shrink-0 snap-start">
+                  <div class="flex flex-col bg-surface-panel/30 backdrop-blur-md hover:bg-white/10 border border-white/5 transition-all duration-500 rounded-xl group cursor-pointer overflow-hidden h-full" data-nav-playlist="${pl.id}">
+                    <div class="aspect-square w-full mb-3 relative shadow-[0_20px_40px_rgba(0,0,0,0.6)] ${pl.isLikedSongs ? 'bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center' : 'bg-white/5 ring-1 ring-white/10 overflow-hidden'}">
+                      ${pl.isLikedSongs ? `<svg class="w-1/2 h-1/2 text-white drop-shadow-2xl" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>` : `<img src="${pl.cover}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />`}
+                      <button class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center text-white shadow-2xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105"><svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg></button>
+                    </div>
+                    <div class="px-3 pb-3">
+                      <div class="font-bold text-base truncate text-white mb-1 group-hover:underline text-[15px]">${pl.title}</div>
+                      <div class="text-xs text-white/40 truncate">${pl.artist}</div>
+                    </div>
                   </div>
-                  <div class="font-bold text-base truncate text-white mb-1 group-hover:underline">${pl.title}</div>
-                  <div class="text-sm text-white/70 truncate">${pl.artist}</div>
                 </div>`).join('');
             }
           }
@@ -188,13 +282,17 @@ import Layout from '../layouts/Layout.astro';
             sections.artists.el?.classList.remove('hidden');
             if (sections.artists.grid) {
               sections.artists.grid.innerHTML = data.artists.map((artist: any) => `
-                <a href="/artist/${encodeURIComponent(artist.artist)}" class="flex flex-col p-4 bg-[#181818] hover:bg-[#282828] transition-all duration-300 rounded-lg group cursor-pointer border border-transparent">
-                  <div class="aspect-square w-full mb-4 relative shadow-[0_8px_24px_rgba(0,0,0,0.5)] rounded-full overflow-hidden">
-                    <img src="${artist.cover}" alt="${artist.artist}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  </div>
-                  <div class="font-bold text-base truncate text-white mb-1 group-hover:underline">${artist.artist}</div>
-                  <div class="text-sm text-white/70 uppercase tracking-wider text-[10px]">Artist</div>
-                </a>`).join('');
+                <div class="w-44 md:w-52 shrink-0 snap-start">
+                  <a href="/artist/${encodeURIComponent(artist.artist)}" class="flex flex-col bg-[#181818] hover:bg-[#282828] transition-all duration-300 rounded-md group cursor-pointer border border-transparent overflow-hidden h-full">
+                    <div class="aspect-square w-full mb-3 relative shadow-[0_8px_24px_rgba(0,0,0,0.5)] overflow-hidden p-4">
+                      <img src="${artist.cover}" alt="${artist.artist}" class="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-500 shadow-xl" />
+                    </div>
+                    <div class="px-3 pb-3">
+                      <div class="font-bold text-base truncate text-white mb-1 group-hover:underline">${artist.artist}</div>
+                      <div class="text-sm text-white/70 uppercase tracking-wider text-[10px]">Artist</div>
+                    </div>
+                  </a>
+                </div>`).join('');
             }
           }
 
@@ -203,14 +301,18 @@ import Layout from '../layouts/Layout.astro';
             sections.albums.el?.classList.remove('hidden');
             if (sections.albums.grid) {
               sections.albums.grid.innerHTML = data.albums.map((album: any) => `
-                <a href="/album/${album.id}" class="flex flex-col p-4 bg-[#181818] hover:bg-[#282828] transition-all duration-300 rounded-lg group cursor-pointer">
-                  <div class="aspect-square w-full mb-4 relative shadow-[0_8px_24px_rgba(0,0,0,0.5)] rounded-md overflow-hidden">
-                    <img src="${album.cover}" alt="${album.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <button class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105"><svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg></button>
-                  </div>
-                  <div class="font-bold text-base truncate text-white mb-1 group-hover:underline">${album.title}</div>
-                  <div class="text-sm text-white/70 truncate">${album.artist}</div>
-                </a>`).join('');
+                <div class="w-44 md:w-52 shrink-0 snap-start">
+                  <a href="/album/${album.id}" class="flex flex-col bg-surface-panel/30 backdrop-blur-md hover:bg-white/10 border border-white/5 transition-all duration-500 rounded-xl group cursor-pointer overflow-hidden h-full">
+                    <div class="aspect-square w-full mb-3 relative shadow-[0_20px_40px_rgba(0,0,0,0.6)] overflow-hidden ring-1 ring-white/10">
+                      <img src="${album.cover}" alt="${album.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+                      <button class="absolute right-3 bottom-3 w-12 h-12 rounded-full bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center text-white shadow-2xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105"><svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg></button>
+                    </div>
+                    <div class="px-3 pb-3">
+                      <div class="font-bold text-base truncate text-white mb-1 group-hover:underline">${album.title}</div>
+                      <div class="text-sm text-white/70 truncate">${album.artist}</div>
+                    </div>
+                  </a>
+                </div>`).join('');
             }
           }
 
@@ -227,6 +329,7 @@ import Layout from '../layouts/Layout.astro';
     };
 
     input.oninput = handleSearchInput;
+    renderHistory();
   }
 
   function syncLikedHearts() {
@@ -274,9 +377,6 @@ import Layout from '../layouts/Layout.astro';
     });
   }
 
-  // Initial and Transition logic
-  document.addEventListener('DOMContentLoaded', initSearch);
+  // Use ONLY astro:page-load for reliable initialization with View Transitions
   document.addEventListener('astro:page-load', initSearch);
-  window.addEventListener('app:navigation', initSearch);
-  initSearch();
 </script>

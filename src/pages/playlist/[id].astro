@@ -46,7 +46,7 @@ if (playlist) {
       <div class="pt-12 px-2 md:px-12 pb-12 bg-gradient-to-b from-[#450af5]/20 to-[#121212]">
         <div class="flex flex-col md:flex-row items-center md:items-end gap-8 mb-12">
           <!-- Artwork -->
-          <div class="w-64 h-64 md:w-[232px] md:h-[232px] shrink-0 shadow-[0_25px_60px_rgba(0,0,0,0.7)] rounded-lg overflow-hidden group relative">
+          <div class="w-64 h-64 md:w-[232px] md:h-[232px] shrink-0 shadow-[0_25px_60px_rgba(0,0,0,0.7)] rounded-md overflow-hidden group relative">
              <div class="absolute inset-0 bg-gradient-to-br from-[#450af5] to-[#8e8ee5] flex items-center justify-center">
                 <svg class="w-1/2 h-1/2 text-white/50" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
              </div>
@@ -87,7 +87,7 @@ if (playlist) {
             <div class="flex items-center gap-4">
               <button 
                 id="edit-playlist-btn" 
-                class="px-4 py-2 text-xs font-bold uppercase tracking-wider text-white/70 border border-white/20 rounded-md hover:bg-white/10 hover:text-white transition-all"
+                class="px-4 py-2 text-xs font-bold uppercase tracking-wider text-white/70 border border-white/20 rounded-sm hover:bg-white/10 hover:text-white transition-all"
                 data-playlist-id={playlist.id}
                 data-playlist-title={playlist.title}
                 data-playlist-description={playlist.description}

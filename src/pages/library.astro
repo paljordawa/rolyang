@@ -12,113 +12,84 @@ const { data: albums = [], error } = await supabase
 if (error) {
   console.error("Library fetch error:", error);
 }
+
+// Mocking different sections using subsets of albums
+const playlists = albums.slice(0, 5);
+const madeForYou = albums;
+const genres = albums.slice(5, 10);
 ---
 <Layout title="Your Library">
-  <div class="px-2.5 pt-3 md:pt-10">
+  <div class="px-2.5 pt-3 md:pt-10 max-w-[1600px] mx-auto">
     <div class="flex items-center justify-between mb-8">
-      <h1 class="text-3xl font-bold text-white">Your Library</h1>
-      <div class="flex items-center gap-2">
-        <button id="view-toggle" class="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all border border-white/5 shadow-md flex items-center justify-center group" aria-label="Toggle View">
-           <svg id="grid-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 transition-transform group-active:scale-90"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-           <svg id="list-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 hidden transition-transform group-active:scale-90"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-        </button>
-        <button class="p-2 text-white/70 hover:text-white transition-colors" aria-label="Sort">
-           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M3 6h18M6 12h12m-9 6h6"/></svg>
-        </button>
-      </div>
+      <h1 class="text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-2xl font-heading">Your Library</h1>
     </div>
 
     {albums.length === 0 ? (
       <SkeletonAlbum count={6} />
     ) : (
-      <div id="library-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6 pb-20 transition-all duration-500">
-        {albums.map((album) => (
-          <div class="library-card-wrapper transition-all duration-300 transform">
-            <AlbumCard 
-              id={album.id as string} 
-              title={album.title as string} 
-              artist={album.artist as string} 
-              cover={album.cover as string} 
-              width="auto"
-            />
+      <div class="space-y-12 pb-20">
+        
+        <!-- Playlists Section -->
+        <section>
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="font-heading font-bold text-2xl hover:text-brand-primary transition-colors cursor-pointer text-white">Playlists</h2>
           </div>
-        ))}
+          <div class="flex overflow-x-auto gap-5 pb-6 no-scrollbar -mx-4 px-4 snap-x">
+            {playlists.map((album) => (
+              <div class="w-44 md:w-52 shrink-0 snap-start">
+                <AlbumCard 
+                  id={album.id as string} 
+                  title={album.title as string} 
+                  artist={album.artist as string} 
+                  cover={album.cover as string} 
+                  width="auto"
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <!-- Made for you Section -->
+        <section>
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="font-heading font-bold text-2xl hover:text-brand-primary transition-colors cursor-pointer text-white">Made for you</h2>
+          </div>
+          <div class="flex overflow-x-auto gap-5 pb-6 no-scrollbar -mx-4 px-4 snap-x">
+            {madeForYou.map((album) => (
+              <div class="w-44 md:w-52 shrink-0 snap-start">
+                <AlbumCard 
+                  id={album.id as string} 
+                  title={album.title as string} 
+                  artist={album.artist as string} 
+                  cover={album.cover as string} 
+                  width="auto"
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <!-- Genre Section -->
+        <section>
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="font-heading font-bold text-2xl hover:text-brand-primary transition-colors cursor-pointer text-white">Genres</h2>
+          </div>
+          <div class="flex overflow-x-auto gap-5 pb-6 no-scrollbar -mx-4 px-4 snap-x">
+            {genres.map((album) => (
+              <div class="w-44 md:w-52 shrink-0 snap-start">
+                <AlbumCard 
+                  id={album.id as string} 
+                  title={album.title as string} 
+                  artist={album.artist as string} 
+                  cover={album.cover as string} 
+                  width="auto"
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+
       </div>
     )}
   </div>
 </Layout>
-
-<script>
-  function initLibrary() {
-    const btn = document.getElementById('view-toggle');
-    const container = document.getElementById('library-container');
-    const gridIcon = document.getElementById('grid-icon');
-    const listIcon = document.getElementById('list-icon');
-    if (!btn || !container) return;
-
-    function setView(mode: 'grid' | 'list') {
-      if (mode === 'list') {
-        container?.classList.remove('grid', 'grid-cols-2', 'sm:grid-cols-3', 'md:grid-cols-4', 'lg:grid-cols-5', 'xl:grid-cols-6');
-        container?.classList.add('flex', 'flex-col', 'space-y-1.5');
-        gridIcon?.classList.add('hidden');
-        listIcon?.classList.remove('hidden');
-        
-        document.querySelectorAll('.library-card-wrapper a').forEach(el => {
-          el.classList.add('flex-row', 'items-center', 'p-2', 'gap-3');
-          el.classList.remove('flex-col', 'p-3');
-          const imgWrap = el.querySelector('div:first-child');
-          const metaWrap = el.querySelector('.js-card-meta');
-          if (imgWrap) {
-            imgWrap.classList.add('w-14', 'h-14', 'shrink-0', 'mb-0');
-            imgWrap.classList.remove('w-full', 'mb-3');
-          }
-          if (metaWrap) {
-            metaWrap.classList.add('hidden');
-          }
-        });
-      } else {
-        container?.classList.add('grid', 'grid-cols-2', 'sm:grid-cols-3', 'md:grid-cols-4', 'lg:grid-cols-5', 'xl:grid-cols-6');
-        container?.classList.remove('flex', 'flex-col', 'space-y-1.5');
-        gridIcon?.classList.remove('hidden');
-        listIcon?.classList.add('hidden');
-        
-        document.querySelectorAll('.library-card-wrapper a').forEach(el => {
-          el.classList.remove('flex-row', 'items-center', 'p-2', 'gap-3');
-          el.classList.add('flex-col', 'p-3');
-          const imgWrap = el.querySelector('div:first-child');
-          const metaWrap = el.querySelector('.js-card-meta');
-          if (imgWrap) {
-            imgWrap.classList.remove('w-14', 'h-14', 'shrink-0', 'mb-0');
-            imgWrap.classList.add('w-full', 'mb-3');
-          }
-          if (metaWrap) {
-            metaWrap.classList.remove('hidden');
-          }
-        });
-      }
-      localStorage.setItem('library:view', mode);
-    }
-
-    // Initial load
-    const saved = localStorage.getItem('library:view') as 'grid' | 'list' || 'grid';
-    setView(saved);
-
-    btn.addEventListener('click', () => {
-      const current = localStorage.getItem('library:view') || 'grid';
-      setView(current === 'grid' ? 'list' : 'grid');
-    });
-
-    // Wire up the quick play buttons (re-run logic)
-    document.querySelectorAll('[data-player-book]').forEach(el => {
-      el.addEventListener('click', () => {
-        const payload = { bookId: el.getAttribute('data-player-book'), chapIndex: 0 };
-        // @ts-ignore
-        if (window.playerPlay) window.playerPlay(payload);
-      });
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', initLibrary);
-  document.addEventListener('astro:page-load', initLibrary);
-  initLibrary();
-</script>

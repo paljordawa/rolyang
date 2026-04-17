@@ -65,38 +65,38 @@ const totalDurationFormatted = formatTotalDuration(totalDurationSeconds);
       <div class="pt-20 px-2 sm:px-4 md:px-8 pb-8">
         <!-- Hero Header -->
         <div class="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 mb-8 px-2 sm:px-0">
-          <div class="w-48 h-48 md:w-60 md:h-60 shrink-0 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden group relative">
-            <img src={album.cover} alt={album.title} class="w-full h-full object-cover" />
+          <div class="w-48 h-48 md:w-60 md:h-60 shrink-0 shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden group relative ring-1 ring-white/10">
+            <img src={album.cover} alt={album.title} class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
             <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </div>
           
           <div class="flex flex-col gap-2">
             <span class="text-xs font-bold uppercase tracking-wider text-white/90">Album</span>
-            <h1 class="text-4xl md:text-7xl font-black text-white tracking-tighter mb-2 leading-tight">
+            <h1 class="text-4xl md:text-7xl font-heading font-extrabold text-white tracking-tight mb-2 leading-tight drop-shadow-xl">
               {album.title}
             </h1>
             <div class="flex items-center flex-wrap gap-2 text-sm font-bold text-white">
               <span class="hover:underline cursor-pointer">{album.artist}</span>
               <span class="text-white/60">•</span>
-              <span class="text-white/60 font-medium">{chapters.length} songs, {totalDurationFormatted}</span>
+              <span class="text-white/60 font-medium">{chapters.length} songs</span>
             </div>
           </div>
         </div>
 
         <!-- Sticky Actions Bar -->
-        <div class="sticky top-[64px] z-30 flex items-center justify-between py-4 -mx-2 sm:-mx-4 md:-mx-8 px-4 sm:px-4 md:px-8 mb-4">
+        <div class="sticky top-[74px] z-30 flex items-center justify-between py-5 -mx-2 sm:-mx-4 md:-mx-8 px-4 sm:px-4 md:px-8 mb-10 bg-surface-panel/80 backdrop-blur-xl shadow-2xl border-b border-white/5">
           <div class="flex items-center gap-4 sm:gap-6 md:gap-8">
             <PlayButton 
               bookId={album.id.toString()}
               chapIndex={0}
               trackId={chapters[0]?.id.toString()}
-              class="w-14 h-14 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl hover:scale-105 active:scale-95 transition-all"
+              class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center text-white shadow-[0_0_25px_rgba(99,102,241,0.6)] hover:scale-110 active:scale-95 transition-all"
               svgClass="w-8 h-8 ml-1"
             />
-            <button class="text-white/70 hover:text-white transition-colors" aria-label="Shuffle">
+            <button class="text-white/40 hover:text-brand-primary transition-all active:scale-90" aria-label="Shuffle">
               <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5m-4.22 8.78l4.22 4.22M1 21s4.5-4.5 5.78-5.78M21 3L1 21M21 21h-5v-5M1 3s4.5 4.5 5.78 5.78"/></svg>
             </button>
-            <button class="text-white/70 hover:text-white transition-colors" aria-label="Favorite Album">
+            <button class="text-white/40 hover:text-brand-primary transition-all active:scale-90" aria-label="Favorite Album">
               <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             </button>
             <button class="text-white/70 hover:text-white transition-colors" aria-label="More Options">

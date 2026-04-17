@@ -57,7 +57,7 @@ const errorObj = Astro.url.searchParams.get("error");
 
         {
           errorObj && (
-            <div class="bg-red-500/10 border border-red-500/50 text-red-500 text-sm p-3 rounded-lg text-center mb-6 font-semibold">
+            <div class="bg-red-500/10 border border-red-500/50 text-red-500 text-sm p-3 rounded text-center mb-6 font-semibold">
               {errorObj}
             </div>
           )
@@ -104,8 +104,7 @@ const errorObj = Astro.url.searchParams.get("error");
 
         <div class="mt-12 pt-6 text-center">
           <p class="text-[11px] text-white/30 font-medium">
-            By continuing, you agree to Rolyang's Terms of Service and Privacy
-            Policy.
+            By continuing, you agree to Rolyang's <a href="/terms" class="text-white/60 hover:text-white underline transition decoration-white/20 hover:decoration-white">Terms of Service</a> and <a href="/privacy" class="text-white/60 hover:text-white underline transition decoration-white/20 hover:decoration-white">Privacy Policy</a>.
           </p>
         </div>
       </div>

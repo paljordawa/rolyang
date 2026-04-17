@@ -42,14 +42,8 @@ export default function Player({ books: albums = [], startBookId = null, startCh
           setDuration(d);
           setIsReady(true);
           
-          // Recover saved play position
-          const trackIdKey = `${album.id}:${chap.id}`;
-          const saved = localStorage.getItem(`pos:${trackIdKey}`);
-          const time = saved ? Number(saved) : 0;
-          if (time > 2) {
-             audioService.seek(time);
-             setProgress(time);
-          }
+          // Recover saved play position DISABLED
+          // Track will always start at 0
        },
        onProgress: (p) => setProgress(p)
      });
@@ -218,76 +212,67 @@ export default function Player({ books: albums = [], startBookId = null, startCh
 
   return (
     <>
-      {/* 1. Glassmorphic Player Bar (Floating/Persistent) */}
+      {/* 1. Player Bar (Floating Pill Mobile / Persistent Desktop) */}
       <div 
         onClick={() => { if (window.innerWidth < 768) setIsExpanded(true); }}
-        className="w-full bg-black/40 backdrop-blur-2xl border border-white/10 px-4 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center md:flex-row gap-4 w-full h-full relative group rounded-2xl sm:rounded-none"
+        className="w-full flex items-center md:flex-row gap-2 md:gap-4 w-full h-full relative group px-2 md:px-0"
       >
-        {/* 1. Mini Progress Bar (Top Edge - Mobile only) */}
-        <div className="md:hidden absolute top-0 left-4 right-4 h-[3px] bg-white/5 z-20 pointer-events-none rounded-full overflow-hidden">
-           <div 
-             className="h-full bg-gradient-to-r from-[#1db954] to-[#1ed760] shadow-[0_0_12px_rgba(29,185,84,0.6)] transition-all duration-500 ease-linear" 
-             style={{ width: `${(duration > 0 ? (progress / duration) * 100 : 0)}%` }}
-           />
-        </div>
-        
         {/* 1. Track Info (Visual Core) */}
-        <div className="flex items-center gap-4 w-full md:w-[30%] pointer-events-none">
+        <div className="flex items-center gap-3 w-[70%] md:w-[30%] pointer-events-none md:pl-4">
           {album.cover && (
              <div className="relative shrink-0 group/cover">
-                <img src={album.cover} alt="Cover" className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-cover shadow-2xl ring-1 ring-white/20 group-hover/cover:scale-105 transition-transform duration-500" />
-                <div className="absolute inset-0 rounded-xl shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]"></div>
+                <img src={album.cover} alt="Cover" className="w-[42px] h-[42px] md:w-16 md:h-16 rounded-md object-cover shadow-2xl ring-1 ring-white/10 group-hover/cover:scale-105 transition-transform duration-500" />
              </div>
           )}
-          <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-white font-black text-[14px] md:text-sm truncate leading-tight tracking-tight drop-shadow-sm">{chap.title || album.title}</span>
-            <span className="text-white/50 text-[11px] md:text-[12px] truncate mt-0.5 font-bold uppercase tracking-[0.05em]">{album.artist || 'Unknown Artist'}</span>
+          <div className="flex flex-col min-w-0 flex-1 justify-center h-full">
+            <span className="text-white font-medium text-[14px] md:text-[15px] truncate leading-tight tracking-tight drop-shadow-sm">{chap.title || album.title}</span>
+            <span className="text-white/60 text-[12px] md:text-[13px] truncate mt-[2px] font-normal">{album.artist || 'Unknown Artist'}</span>
           </div>
         </div>
 
         {/* 2. Desktop Control Center (Center) */}
-        <div className="flex flex-col flex-1 w-full max-w-[45%] items-center justify-center hidden md:flex">
-           <div className="flex items-center gap-8 mb-2">
+        <div className="flex flex-col flex-1 w-full max-w-[40%] items-center justify-center hidden md:flex">
+           <div className="flex items-center gap-6 mb-2">
              <button 
                onClick={(e) => { e.stopPropagation(); setIsShuffle(!isShuffle); }} 
-               className={`transition-all duration-300 hover:scale-110 ${isShuffle ? 'text-[#1db954] drop-shadow-[0_0_8px_rgba(29,185,84,0.5)]' : 'text-white/40 hover:text-white'}`}
+               className={`transition-all duration-300 hover:scale-110 ${isShuffle ? 'text-brand-primary' : 'text-white/40 hover:text-white'}`}
                title="Shuffle"
              >
                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
              </button>
 
              <button onClick={(e) => { e.stopPropagation(); handlePrev(); }} className="text-white/60 hover:text-white hover:scale-110 transition-all">
-               <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M11.5 12L20 18V6l-8.5 6zM4 6h2v12H4V6z" /></svg>
+               <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M11.5 12L20 18V6l-8.5 6zM4 6h2v12H4V6z" /></svg>
              </button>
              
              <button 
                onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
-               className={`w-11 h-11 flex items-center justify-center rounded-full transition-all duration-300 shadow-xl ${isReady ? 'bg-white text-black hover:scale-110' : 'bg-gray-800 text-gray-500'}`}
+               className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 shadow-xl ${isReady ? 'bg-white text-black hover:scale-105' : 'bg-white/20 text-white/50'}`}
                disabled={!isReady}
              >
                 {isPlaying ? (
-                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5" /><rect x="14" y="5" width="4" height="14" rx="1.5" /></svg>
+                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5" /><rect x="14" y="5" width="4" height="14" rx="1.5" /></svg>
                 ) : (
-                  <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" className="ml-1"><path d="M5.25 5.036a.75.75 0 011.125-.66l12 7a.75.75 0 010 1.287l-12 7A.75.75 0 015.25 19.964V5.036z" /></svg>
+                  <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" className="ml-1"><path d="M5.25 5.036a.75.75 0 011.125-.66l12 7a.75.75 0 010 1.287l-12 7A.75.75 0 015.25 19.964V5.036z" /></svg>
                 )}
              </button>
              
              <button onClick={(e) => { e.stopPropagation(); handleNext(); }} className="text-white/60 hover:text-white hover:scale-110 transition-all">
-               <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M12.5 12L4 6v12l8.5-6zM20 6h-2v12h2V6z" /></svg>
+               <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12.5 12L4 6v12l8.5-6zM20 6h-2v12h2V6z" /></svg>
              </button>
 
              <button 
                onClick={(e) => { e.stopPropagation(); setIsRepeat(!isRepeat); }} 
-               className={`transition-all duration-300 hover:scale-110 ${isRepeat ? 'text-[#1db954] drop-shadow-[0_0_8px_rgba(29,185,84,0.5)]' : 'text-white/40 hover:text-white'}`}
+               className={`transition-all duration-300 hover:scale-110 ${isRepeat ? 'text-brand-primary' : 'text-white/40 hover:text-white'}`}
                title="Repeat"
              >
                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
              </button>
            </div>
 
-           <div className="w-full flex items-center gap-3">
-             <span className="text-[10px] text-white/40 min-w-[32px] text-right font-black tracking-tighter">{formatTime(progress)}</span>
-             <div className="relative flex-1 group h-4 flex items-center cursor-pointer">
+           <div className="w-full flex items-center gap-2">
+             <span className="text-[11px] text-white/40 w-10 text-right opacity-80 font-bold tabular-nums">{formatTime(progress)}</span>
+             <div className="relative flex-1 group h-3 flex items-center cursor-pointer">
                 <input 
                   type="range" 
                   min="0" 
@@ -297,26 +282,38 @@ export default function Player({ books: albums = [], startBookId = null, startCh
                   onClick={(e) => e.stopPropagation()}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
-                <div className="w-full h-[3px] bg-white/10 rounded-full overflow-hidden relative pointer-events-none group-hover:h-1.5 transition-all">
-                   <div className="absolute top-0 left-0 bottom-0 bg-white group-hover:bg-[#1db954] transition-colors shadow-[0_0_8px_rgba(255,255,255,0.4)]" style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}></div>
+                <div className="w-full h-[4px] bg-white/10 rounded-full overflow-hidden relative pointer-events-none group-hover:bg-white/20 transition-all">
+                   <div className="absolute top-0 left-0 bottom-0 bg-white group-hover:bg-brand-primary transition-colors" style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}></div>
                 </div>
                 {/* Visual Thumb for hover */}
                 <div 
-                   className="absolute w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-lg pointer-events-none transition-opacity"
+                   className="absolute w-[12px] h-[12px] bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-md pointer-events-none transition-opacity"
                    style={{ left: `calc(${duration ? (progress / duration) * 100 : 0}% - 6px)` }}
                 ></div>
              </div>
-             <span className="text-[10px] text-white/40 min-w-[32px] text-left font-black tracking-tighter">{formatTime(duration)}</span>
+             <span className="text-[11px] text-white/40 w-10 text-left opacity-80 font-bold tabular-nums">{formatTime(duration)}</span>
            </div>
         </div>
 
         {/* 3. Utility Controls (Right) */}
-        <div className="flex w-auto md:w-[30%] justify-end items-center pr-2 gap-4 ml-auto">
-           <div className="hidden md:flex items-center gap-3">
-              <span className="text-white/40">
-                 <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M13.426 2.574a.5.5 0 00-.852-.353l-6 6A.5.5 0 016.22 8.5H3a.5.5 0 00-.5.5v6a.5.5 0 00.5.5h3.22a.5.5 0 01.354.146l6 6a.5.5 0 00.852-.353V2.574zM19 12c0-2.3-1.2-4.3-3-5.2v10.4c1.8-.9 3-2.9 3-5.2z"></path></svg>
+        <div className="flex w-auto md:w-[30%] justify-end items-center md:pr-4 gap-4 ml-auto h-full">
+           {/* Mobile-Only Toggle Like */}
+           <button 
+             onClick={(e) => {
+                e.stopPropagation();
+                // @ts-ignore
+                if (window.__nanostores_player) window.__nanostores_player.toggleLike(album.id, chap.id);
+             }}
+             className="md:hidden text-white/60 hover:text-brand-primary transition-colors pr-2"
+           >
+              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+           </button>
+
+           <div className="hidden md:flex items-center gap-2">
+              <span className="text-white/40 group-hover:text-white transition-colors">
+                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M13.426 2.574a.5.5 0 00-.852-.353l-6 6A.5.5 0 016.22 8.5H3a.5.5 0 00-.5.5v6a.5.5 0 00.5.5h3.22a.5.5 0 01.354.146l6 6a.5.5 0 00.852-.353V2.574zM19 12c0-2.3-1.2-4.3-3-5.2v10.4c1.8-.9 3-2.9 3-5.2z"></path></svg>
               </span>
-              <div className="relative w-20 group h-4 flex items-center cursor-pointer">
+              <div className="relative w-[90px] group h-3 flex items-center cursor-pointer">
                  <input 
                     type="range" 
                     min="0" 
@@ -327,8 +324,8 @@ export default function Player({ books: albums = [], startBookId = null, startCh
                     onClick={(e) => e.stopPropagation()}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                  />
-                 <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden relative pointer-events-none">
-                    <div className="absolute top-0 left-0 bottom-0 bg-white/80 group-hover:bg-[#1db954] transition-colors" style={{ width: `${volume * 100}%` }}></div>
+                 <div className="w-full h-[4px] bg-white/10 rounded-full overflow-hidden relative pointer-events-none group-hover:bg-white/20 transition-all">
+                    <div className="absolute top-0 left-0 bottom-0 bg-white group-hover:bg-brand-primary transition-colors" style={{ width: `${volume * 100}%` }}></div>
                  </div>
               </div>
            </div>
@@ -336,67 +333,67 @@ export default function Player({ books: albums = [], startBookId = null, startCh
            {/* Mobile-Only Mini Play */}
            <button 
              onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-             className="md:hidden w-11 h-11 flex items-center justify-center text-white bg-white/10 rounded-full backdrop-blur-md active:scale-90 transition-all border border-white/10"
+             className="md:hidden w-[38px] h-[38px] flex items-center justify-center text-white bg-transparent active:scale-90 transition-all"
            >
              {isPlaying ? (
-               <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+               <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5" /><rect x="14" y="5" width="4" height="14" rx="1.5" /></svg>
              ) : (
-               <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" className="ml-1"><path d="M5.25 5.036a.75.75 0 011.125-.66l12 7a.75.75 0 010 1.287l-12 7A.75.75 0 015.25 19.964V5.036z" /></svg>
+               <svg width="26" height="26" fill="currentColor" viewBox="0 0 24 24" className="ml-1"><path d="M5.25 5.036a.75.75 0 011.125-.66l12 7a.75.75 0 010 1.287l-12 7A.75.75 0 015.25 19.964V5.036z" /></svg>
              )}
            </button>
+        </div>
+
+        {/* 1. Mini Progress Bar (Bottom Edge - Mobile only) */}
+        <div className="md:hidden absolute bottom-0 left-2 right-2 h-[2px] bg-white/10 z-20 pointer-events-none overflow-hidden">
+           <div 
+             className="h-full bg-white transition-all duration-500 ease-linear" 
+             style={{ width: `${(duration > 0 ? (progress / duration) * 100 : 0)}%` }}
+           />
         </div>
       </div>
 
       {/* 2. Full-Screen Glass Mobile Player */}
       <div 
-        className={`fixed inset-0 z-[100] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isExpanded ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-[100] bg-[#121212] transition-all duration-[400ms] ease-[cubic-bezier(0.32,0.72,0,1)] flex flex-col ${isExpanded ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}
       >
-        {/* Dynamic Blurred Background */}
-        <div className="absolute inset-x-0 bottom-0 top-0 -z-20 overflow-hidden bg-black">
+        {/* Dynamic Blurred Background Gradient */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
           <img 
             src={album.cover} 
-            className="w-full h-full object-cover blur-[100px] opacity-60 scale-150" 
-            alt="Blur BG" 
+            className="w-full h-full object-cover blur-[100px] opacity-40 scale-150 transform transition-transform duration-1000" 
+            alt="" 
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/20"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/40 to-black/95"></div>
         </div>
 
-        <div className="h-full flex flex-col px-8 py-10 relative z-10">
+        <div className="h-full flex flex-col px-6 pt-10 pb-8 relative z-10 w-full max-w-lg mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <button onClick={() => setIsExpanded(false)} className="text-white/40 hover:text-white p-3 bg-white/5 rounded-full backdrop-blur-md transition-all border border-white/10 active:scale-90">
-              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" /></svg>
+          <div className="flex items-center justify-between mb-8 shrink-0">
+            <button onClick={() => setIsExpanded(false)} className="text-white hover:scale-110 active:scale-90 transition-all p-2 -ml-2">
+              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" /></svg>
             </button>
             <div className="text-center">
-               <span className="text-white/30 text-[10px] font-black uppercase tracking-[0.2em] block mb-1">Playing from album</span>
-               <h2 className="text-white font-bold text-sm tracking-tight truncate max-w-[180px]">{album.title}</h2>
+               <span className="text-white text-xs font-medium uppercase tracking-widest block mb-0.5 opacity-90 drop-shadow-sm">{album.title}</span>
             </div>
-            <button className="text-white/40 p-2">
-               <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V2L8 6l4 4V7c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.95 20 14.53 20 13c0-4.42-3.58-8-8-8zm0 12c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 6.74C4.46 8.05 4 9.47 4 11c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+            <button className="text-white p-2 hover:scale-110 transition-all -mr-2">
+               <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
             </button>
           </div>
 
           {/* Epic Large Artwork */}
-          <div className="flex-1 flex flex-col justify-center items-center py-6">
-            <div className="w-full aspect-square max-w-[320px] rounded-[48px] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.6)] relative group">
-                <img src={album.cover} className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110" alt="Current Cover" />
-                <div className="absolute inset-0 shadow-[inset_0_0_60px_rgba(0,0,0,0.2)]"></div>
-            </div>
-            
-            {/* Pagination Visual */}
-            <div className="flex gap-2.5 mt-10">
-              <div className="w-2 h-2 rounded-full bg-[#1db954] shadow-[0_0_10px_rgba(29,185,84,0.6)]"></div>
-              <div className="w-2 h-2 rounded-full bg-white/10"></div>
-              <div className="w-2 h-2 rounded-full bg-white/10"></div>
+          <div className="flex-1 flex flex-col justify-center items-center py-2 shrink-0">
+            <div className="w-full aspect-square max-w-[340px] rounded-lg overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] bg-white/5 mx-auto">
+                <img src={album.cover} className="w-full h-full object-cover" alt="Current Cover" />
             </div>
           </div>
 
-          {/* Rich Content Info */}
-          <div className="mt-6">
-            <div className="flex items-center justify-between gap-6">
+          {/* Bottom Section (Typography + Controls) */}
+          <div className="mt-6 shrink-0 pb-4">
+            {/* Rich Content Info */}
+            <div className="flex items-center justify-between gap-4 mb-5">
               <div className="flex flex-col flex-1 min-w-0 pr-2">
-                <h3 className="text-3xl font-black text-white truncate leading-tight tracking-[0.01em] drop-shadow-lg">{chap.title}</h3>
-                <p className="text-white/50 font-bold text-lg truncate mt-1 tracking-tight">{album.artist || 'Unknown Artist'}</p>
+                <h3 className="text-[26px] md:text-[28px] font-medium text-white truncate text-left tracking-tight drop-shadow-md mb-1">{chap.title}</h3>
+                <p className="text-white/60 font-normal text-[16px] truncate text-left">{album.artist || 'Unknown Artist'}</p>
               </div>
               <button 
                 onClick={(e) => {
@@ -404,84 +401,76 @@ export default function Player({ books: albums = [], startBookId = null, startCh
                    // @ts-ignore
                    if (window.__nanostores_player) window.__nanostores_player.toggleLike(album.id, chap.id);
                 }}
-                className="text-white/30 hover:text-[#1db954] transition-colors p-2"
+                className="text-white hover:text-brand-primary active:scale-95 transition-all p-2 bg-white/5 rounded-full backdrop-blur-md"
               >
-                 <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                 <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
               </button>
             </div>
-          </div>
 
-          {/* High-Contrast Seek Area */}
-          <div className="mt-10 px-1 flex flex-col gap-4">
-            <div className="relative w-full h-2 bg-white/10 rounded-full">
-              <div 
-                className="absolute top-0 left-0 bottom-0 bg-gradient-to-r from-[#1db954] to-[#1ed760] rounded-full shadow-[0_0_15px_rgba(29,185,84,0.5)]" 
-                style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}
-              ></div>
-              <input 
-                type="range"
-                className="absolute inset-0 w-full opacity-0 z-20 cursor-pointer h-full"
-                min="0"
-                max={duration || 0}
-                value={progress || 0}
-                onChange={(e) => skipTo(Number(e.target.value))}
-              />
-              {/* Refined Thumb handle */}
-              <div 
-                className="absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-white rounded-full shadow-2xl z-10 border-4 border-[#1db954]"
-                style={{ left: `calc(${duration ? (progress / duration) * 100 : 0}% - 10px)` }}
-              ></div>
+            {/* High-Contrast Seek Area */}
+            <div className="flex flex-col gap-1 mb-4">
+              <div className="relative w-full h-[4px] bg-white/20 rounded-full group">
+                <input 
+                  type="range"
+                  className="absolute inset-0 w-full opacity-0 z-20 cursor-pointer h-full border-0"
+                  min="0"
+                  max={duration || 0}
+                  value={progress || 0}
+                  onChange={(e) => skipTo(Number(e.target.value))}
+                />
+                <div 
+                  className="absolute top-0 left-0 bottom-0 bg-white rounded-full transition-colors drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]" 
+                  style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}
+                ></div>
+                {/* Thumb handle */}
+                <div 
+                  className="absolute top-1/2 -translate-y-1/2 w-[10px] h-[10px] bg-white rounded-full shadow-lg z-10 opacity-100 peer-active:scale-125 transition-transform"
+                  style={{ left: `calc(${duration ? (progress / duration) * 100 : 0}% - 5px)` }}
+                ></div>
+              </div>
+              <div className="flex justify-between items-center opacity-70 mt-1">
+                <span className="text-white text-[11px] font-bold tracking-widest tabular-nums">{formatTime(progress)}</span>
+                <span className="text-white text-[11px] font-bold tracking-widest tabular-nums">{formatTime(duration)}</span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-white/40 text-[11px] font-black tracking-widest">{formatTime(progress)}</span>
-              <span className="text-white/40 text-[11px] font-black tracking-widest">{formatTime(duration)}</span>
+
+            {/* Master Playback Controls */}
+            <div className="flex items-center justify-between mt-2 mb-2">
+              <button 
+                onClick={() => setIsShuffle(!isShuffle)} 
+                className={`p-2 transition-all active:scale-90 ${isShuffle ? 'text-brand-primary' : 'text-white/60 hover:text-white'}`}
+              >
+                <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+              </button>
+              
+              <div className="flex items-center gap-6">
+                <button onClick={handlePrev} className="text-white active:scale-90 transition-transform p-1">
+                  <svg width="40" height="40" fill="currentColor" viewBox="0 0 24 24"><path d="M11.5 12L20 18V6l-8.5 6zM4 6h2v12H4V6z" /></svg>
+                </button>
+                <button 
+                  onClick={() => togglePlay()} 
+                  disabled={!isReady}
+                  className="w-[68px] h-[68px] shrink-0 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+                >
+                  {isPlaying ? (
+                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5" /><rect x="14" y="5" width="4" height="14" rx="1.5" /></svg>
+                  ) : (
+                    <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24" className="ml-1.5"><path d="M5.25 5.036a.75.75 0 011.125-.66l12 7a.75.75 0 010 1.287l-12 7A.75.75 0 015.25 19.964V5.036z" /></svg>
+                  )}
+                </button>
+                <button onClick={handleNext} className="text-white active:scale-90 transition-transform p-1">
+                  <svg width="40" height="40" fill="currentColor" viewBox="0 0 24 24"><path d="M12.5 12L4 6v12l8.5-6zM20 6h-2v12h2V6z" /></svg>
+                </button>
+              </div>
+
+              <button 
+                onClick={() => setIsRepeat(!isRepeat)} 
+                className={`p-2 transition-all active:scale-90 ${isRepeat ? 'text-brand-primary' : 'text-white/60 hover:text-white'}`}
+              >
+                <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+              </button>
             </div>
-          </div>
-
-          {/* Master Playback Controls */}
-          <div className="mt-10 mb-10 flex items-center justify-between px-2">
-            <button 
-              onClick={() => setIsShuffle(!isShuffle)} 
-              className={`p-3 transition-all ${isShuffle ? 'text-[#1db954] scale-110 drop-shadow-[0_0_10px_rgba(29,185,84,0.5)]' : 'text-white/30'}`}
-            >
-              <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-            </button>
-            <button onClick={handlePrev} className="text-white hover:scale-125 active:scale-90 transition-all p-4">
-              <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
-            </button>
-            <button 
-              onClick={() => togglePlay()} 
-              disabled={!isReady}
-              className="w-24 h-24 shrink-0 bg-white rounded-full flex items-center justify-center text-black shadow-[0_20px_60px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all"
-            >
-              {isPlaying ? (
-                <svg width="36" height="36" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="5" width="5" height="14" rx="2" /><rect x="13" y="5" width="5" height="14" rx="2" /></svg>
-              ) : (
-                <svg width="40" height="40" fill="currentColor" viewBox="0 0 24 24" className="ml-2"><path d="M8 5v14l11-7z"/></svg>
-              )}
-            </button>
-            <button onClick={handleNext} className="text-white hover:scale-125 active:scale-90 transition-all p-4">
-              <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6zM16 6v12h2V6z"/></svg>
-            </button>
-            <button 
-              onClick={() => setIsRepeat(!isRepeat)} 
-              className={`p-3 transition-all ${isRepeat ? 'text-[#1db954] scale-110 drop-shadow-[0_0_10px_rgba(29,185,84,0.5)]' : 'text-white/30'}`}
-            >
-              <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
-            </button>
-          </div>
-
-          {/* Secondary Utilities */}
-          <div className="mt-auto flex items-center justify-between px-4 pb-2">
-             <button className="text-white/40 hover:text-white transition-colors">
-                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-             </button>
-             <button className="text-white/40 hover:text-white transition-colors flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 px-3 py-1.5 rounded-full border border-white/10">Connected Devices</span>
-             </button>
-             <button className="text-white/40 hover:text-white transition-colors">
-                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16m-7 6h7" /></svg>
-             </button>
+            
           </div>
         </div>
       </div>
