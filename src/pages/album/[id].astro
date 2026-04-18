@@ -83,24 +83,24 @@ const totalDurationFormatted = formatTotalDuration(totalDurationSeconds);
           </div>
         </div>
 
-        <!-- Sticky Actions Bar -->
-        <div class="sticky top-[74px] z-30 flex items-center justify-between py-5 -mx-2 sm:-mx-4 md:-mx-8 px-4 sm:px-4 md:px-8 mb-10 bg-surface-panel/80 backdrop-blur-xl shadow-2xl border-b border-white/5">
-          <div class="flex items-center gap-4 sm:gap-6 md:gap-8">
+        <!-- Main Actions Bar -->
+        <div class="flex items-center justify-between py-3 -mx-2 sm:-mx-4 md:-mx-8 px-4 sm:px-4 md:px-8 mb-4 border-b border-white/5 transition-all">
+          <div class="flex items-center gap-4 sm:gap-5 md:gap-6">
             <PlayButton 
               bookId={album.id.toString()}
               chapIndex={0}
               trackId={chapters[0]?.id.toString()}
-              class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center text-white shadow-[0_0_25px_rgba(99,102,241,0.6)] hover:scale-110 active:scale-95 transition-all"
-              svgClass="w-8 h-8 ml-1"
+              class="w-12 h-12 rounded-full bg-brand-primary flex items-center justify-center text-white shadow-lg hover:scale-105 active:scale-95 transition-all"
+              svgClass="w-6 h-6 ml-1"
             />
             <button class="text-white/40 hover:text-brand-primary transition-all active:scale-90" aria-label="Shuffle">
-              <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5m-4.22 8.78l4.22 4.22M1 21s4.5-4.5 5.78-5.78M21 3L1 21M21 21h-5v-5M1 3s4.5 4.5 5.78 5.78"/></svg>
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 3h5v5m-4.22 8.78l4.22 4.22M1 21s4.5-4.5 5.78-5.78M21 3L1 21M21 21h-5v-5M1 3s4.5 4.5 5.78 5.78"/></svg>
             </button>
             <button class="text-white/40 hover:text-brand-primary transition-all active:scale-90" aria-label="Favorite Album">
-              <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             </button>
-            <button class="text-white/70 hover:text-white transition-colors" aria-label="More Options">
-               <svg class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            <button class="text-white/60 hover:text-white transition-colors" aria-label="More Options">
+               <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2.5"/><circle cx="12" cy="12" r="2.5"/><circle cx="19" cy="12" r="2.5"/></svg>
             </button>
           </div>
           
@@ -150,3 +150,69 @@ const totalDurationFormatted = formatTotalDuration(totalDurationSeconds);
 
 </Layout>
 
+<script define:vars={{ albumId: album?.id, albumTitle: album?.title, albumCover: album?.cover, firstTrackId: chapters[0]?.id }}>
+  function initStickyHeader() {
+    const mainContent = document.getElementById('main-content');
+    const dynamicZone = document.getElementById('header-dynamic-zone');
+    
+    if (mainContent && dynamicZone) {
+      let isVisible = false;
+      dynamicZone.innerHTML = ''; // Reset on init
+      
+      const scrollHandler = () => {
+        // Trigger when the user scrolls past the hero artwork
+        if (mainContent.scrollTop > 300) {
+          if (!isVisible) {
+            isVisible = true;
+            setTimeout(() => { if (window._updatePlayerRows) window._updatePlayerRows(); }, 10);
+            dynamicZone.innerHTML = `
+              <div class="flex items-center gap-3 sm:gap-4 transition-all duration-300 opacity-100 animate-in fade-in zoom-in-95">
+                <button 
+                  id="sticky-play-btn"
+                  class="js-main-play-btn w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center text-white shadow-lg hover:scale-105 active:scale-95 transition-all shrink-0"
+                  data-player-album="${albumId}"
+                >
+                  <svg class="play-icon w-5 h-5 ml-1" viewBox="0 0 24 24" fill="currentColor"><path d="M5.25 5.036a.75.75 0 011.125-.66l12 7a.75.75 0 010 1.287l-12 7A.75.75 0 015.25 19.964V5.036z" /></svg>
+                  <svg class="pause-icon hidden w-5 h-5 -ml-0.5" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.5" /><rect x="14" y="5" width="4" height="14" rx="1.5" /></svg>
+                </button>
+                <div class="w-10 h-10 rounded shadow-md overflow-hidden shrink-0 hidden sm:block">
+                   <img src="${albumCover}" class="w-full h-full object-cover" />
+                </div>
+                <div class="font-bold text-white text-base truncate max-w-[200px] md:max-w-[400px]">
+                  ${albumTitle}
+                </div>
+              </div>
+            `;
+            
+            // Wire up the new sticky play button
+            const stickyPlay = document.getElementById('sticky-play-btn');
+            if (stickyPlay) {
+              stickyPlay.addEventListener('click', (e) => {
+                 e.stopPropagation();
+                 // @ts-ignore
+                 if (window.playerPlay) window.playerPlay({ bookId: albumId, chapIndex: 0, trackId: firstTrackId });
+              });
+            }
+          }
+        } else {
+          if (isVisible) {
+            isVisible = false;
+            dynamicZone.innerHTML = '';
+          }
+        }
+      };
+      
+      mainContent.addEventListener('scroll', scrollHandler);
+      
+      // Cleanup when navigating via Astro view transitions
+      document.addEventListener('astro:before-swap', () => {
+         mainContent.removeEventListener('scroll', scrollHandler);
+         dynamicZone.innerHTML = '';
+      }, { once: true });
+    }
+  }
+
+  // Hook into both standard load and SPA navigation
+  document.addEventListener('DOMContentLoaded', initStickyHeader);
+  document.addEventListener('astro:page-load', initStickyHeader);
+</script>

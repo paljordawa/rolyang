@@ -138,6 +138,27 @@ function setupPlayerClickHandler() {
       
       var payload = { bookId: albumId, chapIndex: chapIndex, play: true, expand: expand, trackId: trackId, title: title, artist: artist };
       
+      var isMainPlayBtn = el.classList.contains('js-main-play-btn');
+      var isPlayingThis = false;
+      if (isMainPlayBtn && (window as any).__nanostores_player) {
+         var currentTrack = (window as any).__nanostores_player.$currentTrack?.get();
+         
+         if (currentTrack && albumId) {
+             if (String(albumId) === String(currentTrack.bookId)) isPlayingThis = true;
+             else if (albumId === 'liked-songs' && window.location.pathname.includes('/collection/tracks')) {
+                 if (document.querySelector('[data-player-row][data-track-id="' + currentTrack.trackId + '"]')) {
+                     isPlayingThis = true;
+                 }
+             }
+         }
+         
+         if (isPlayingThis) {
+            // Context is already active. Just toggle global play state instead of restarting
+            (window as any).__nanostores_player.togglePlay();
+            return;
+         }
+      }
+
       if (window.playerPlay) {
         window.playerPlay(payload);
       } else {
@@ -566,14 +587,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
       <main id="main-content" class="flex-1 bg-surface-base border border-white/5 rounded-xl overflow-y-auto overflow-x-hidden relative shadow-2xl">
          <!-- Top sticky header -->
          <header id="main-header" class="sticky top-0 z-40 bg-transparent flex items-center justify-between px-4 md:px-6 py-5 transition-all duration-300">
-            <div class="flex gap-2">
-               <a href={backHref || "/"} class="w-8 h-8 rounded-full bg-black/70 flex items-center justify-center text-white/70 hover:text-white cursor-pointer hover:bg-black/90 transition">
-                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-               </a>
-               <button class="w-8 h-8 rounded-full bg-black/70 hidden md:flex items-center justify-center text-white/70 hover:text-white cursor-not-allowed transition">
-                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-               </button>
-            </div>
+            <div class="flex items-center gap-4 flex-1 h-8" id="header-dynamic-zone"></div>
             
              <div class="flex items-center gap-3 md:gap-4 relative">
                {user ? (
@@ -1190,7 +1204,36 @@ try {
               }
             }
           });
+          
+          document.querySelectorAll('.js-main-play-btn').forEach(function(btn) {
+             var albumId = btn.getAttribute('data-player-album');
+             var isCurrentAlbum = false;
+             
+             if (track && albumId) {
+                 if (albumId === String(track.bookId)) {
+                     isCurrentAlbum = true;
+                 } else if (albumId === 'liked-songs' && window.location.pathname.includes('/collection/tracks')) {
+                     // If we are on Liked Songs and the playing track is in the list, light up the play button
+                     if (document.querySelector('[data-player-row][data-track-id="' + track.trackId + '"]')) {
+                         isCurrentAlbum = true;
+                     }
+                 }
+             }
+             
+             var playIcon = btn.querySelector('.play-icon');
+             var pauseIcon = btn.querySelector('.pause-icon');
+             
+             if (isCurrentAlbum && playing) {
+                if (playIcon) playIcon.classList.add('hidden');
+                if (pauseIcon) pauseIcon.classList.remove('hidden');
+             } else {
+                if (playIcon) playIcon.classList.remove('hidden');
+                if (pauseIcon) pauseIcon.classList.add('hidden');
+             }
+          });
         };
+        
+        (window as any)._updatePlayerRows = updateRows;
         
         function initTrackHighlighting() {
           if (highlightInterval !== null) clearInterval(highlightInterval);

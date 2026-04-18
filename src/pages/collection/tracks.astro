@@ -28,13 +28,26 @@ import Layout from '../../layouts/Layout.astro';
       </div>
 
       <!-- Actions Bar -->
-      <div class="flex items-center gap-6 md:gap-8 mb-8 pb-4">
-        <button 
-          id="play-all-liked"
-          class="w-14 h-14 rounded-full bg-[#1db954] flex items-center justify-center text-black shadow-xl hover:scale-105 active:scale-95 transition-all"
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
-        </button>
+      <div class="flex items-center justify-between py-3 -mx-2 sm:-mx-4 md:-mx-8 px-4 sm:px-4 md:px-8 mb-4 border-b border-white/5 transition-all">
+        <div class="flex items-center gap-4 sm:gap-5 md:gap-6">
+          <button 
+            id="play-all-liked"
+            class="js-main-play-btn w-12 h-12 rounded-full bg-brand-primary flex items-center justify-center text-white shadow-lg hover:scale-105 active:scale-95 transition-all"
+            data-player-album="liked-songs"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" class="play-icon w-6 h-6 ml-1"><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor" class="pause-icon hidden w-6 h-6 -ml-0.5"><rect x="6" y="5" width="4" height="14" rx="1.5" /><rect x="14" y="5" width="4" height="14" rx="1.5" /></svg>
+          </button>
+          <button class="text-white/40 hover:text-brand-primary transition-all active:scale-90" aria-label="Shuffle">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 3h5v5m-4.22 8.78l4.22 4.22M1 21s4.5-4.5 5.78-5.78M21 3L1 21M21 21h-5v-5M1 3s4.5 4.5 5.78 5.78"/></svg>
+          </button>
+          <button class="text-brand-primary transition-all active:scale-90" aria-label="Favorite Collection">
+            <svg class="w-6 h-6 drop-shadow-[0_0_5px_rgba(99,102,241,0.6)]" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"></path></svg>
+          </button>
+          <button class="text-white/60 hover:text-white transition-colors" aria-label="More Options">
+             <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2.5"/><circle cx="12" cy="12" r="2.5"/><circle cx="19" cy="12" r="2.5"/></svg>
+          </button>
+        </div>
       </div>
 
       <!-- Track Table -->

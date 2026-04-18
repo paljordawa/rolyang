@@ -17,11 +17,12 @@ const {
 ---
 <button 
   type="button"
-  class={`${className}`}
-  aria-label="Play"
+  class={`js-main-play-btn ${className}`}
+  aria-label="Play Action"
   data-player-album={bookId}
   data-player-chap={chapIndex}
   data-track-id={trackId}
 >
-  <svg viewBox="0 0 24 24" fill="currentColor" class={`${svgClass}`}><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+  <svg viewBox="0 0 24 24" fill="currentColor" class={`play-icon ${svgClass}`}><path d="M5.25 5.036a.75.75 0 0 1 1.125-.66l12 7a.75.75 0 0 1 0 1.287l-12 7A.75.75 0 0 1 5.25 19.964V5.036z" /></svg>
+  <svg viewBox="0 0 24 24" fill="currentColor" class={`pause-icon hidden ${svgClass} -ml-0.5`}><rect x="6" y="5" width="4" height="14" rx="1.5" /><rect x="14" y="5" width="4" height="14" rx="1.5" /></svg>
 </button>
