@@ -8,29 +8,19 @@ import PlayButton from '../../components/PlayButton.astro';
 const { id } = Astro.params;
 const supabase = createSupabaseServerClient(Astro);
 
-// Fetch album details
-const { data: album, error: albumError } = await supabase
-  .from('albums')
-  .select('*')
-  .eq('id', id)
-  .single();
+// Parallelize data fetching
+const [ { data: album, error: albumError }, { data: tracksResult, error: tracksError } ] = await Promise.all([
+  supabase.from('albums').select('*').eq('id', id).single(),
+  supabase.from('tracks').select('*').eq('album_id', id).order('id', { ascending: true })
+]);
 
-// Fetch tracks for this album
-let chapters: any[] = [];
+if (albumError) console.error('Album fetch error:', albumError);
+if (tracksError) console.error('Tracks fetch error:', tracksError);
+
+const chapters = tracksResult || [];
 let totalDurationSeconds = 0;
 
 if (album) {
-  const { data: tracksResult, error: tracksError } = await supabase
-    .from('tracks')
-    .select('*')
-    .eq('album_id', id)
-    .order('id', { ascending: true });
-  
-  if (!tracksError) {
-    chapters = tracksResult || [];
-  }
-
-  // Calculate total duration
   chapters.forEach((ch) => {
     if (ch.duration) {
       const parts = ch.duration.split(':').map(Number);
@@ -160,7 +150,6 @@ const totalDurationFormatted = formatTotalDuration(totalDurationSeconds);
       dynamicZone.innerHTML = ''; // Reset on init
       
       const scrollHandler = () => {
-        // Trigger when the user scrolls past the hero artwork
         if (mainContent.scrollTop > 300) {
           if (!isVisible) {
             isVisible = true;
@@ -184,12 +173,10 @@ const totalDurationFormatted = formatTotalDuration(totalDurationSeconds);
               </div>
             `;
             
-            // Wire up the new sticky play button
             const stickyPlay = document.getElementById('sticky-play-btn');
             if (stickyPlay) {
               stickyPlay.addEventListener('click', (e) => {
                  e.stopPropagation();
-                 // @ts-ignore
                  if (window.playerPlay) window.playerPlay({ bookId: albumId, chapIndex: 0, trackId: firstTrackId });
               });
             }
@@ -203,8 +190,6 @@ const totalDurationFormatted = formatTotalDuration(totalDurationSeconds);
       };
       
       mainContent.addEventListener('scroll', scrollHandler);
-      
-      // Cleanup when navigating via Astro view transitions
       document.addEventListener('astro:before-swap', () => {
          mainContent.removeEventListener('scroll', scrollHandler);
          dynamicZone.innerHTML = '';
@@ -212,7 +197,6 @@ const totalDurationFormatted = formatTotalDuration(totalDurationSeconds);
     }
   }
 
-  // Hook into both standard load and SPA navigation
   document.addEventListener('DOMContentLoaded', initStickyHeader);
   document.addEventListener('astro:page-load', initStickyHeader);
 </script>

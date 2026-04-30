@@ -17,41 +17,41 @@ export const GET = async (context) => {
     // Since we need trackIndex (complex row number), raw SQL might be easier but Supabase's JS client doesn't do raw SQL well.
     // However, we can use the 'tracks' table and join albums.
     
-    const { data: songsData, error: songsError } = await supabase
-      .from('tracks')
-      .select('*, albums(title, cover, artist)')
-      .ilike('title', q)
-      .limit(10);
+    // Parallelize the three main searches
+    const [ { data: songsData, error: songsError }, { data: artistsData }, { data: albumsData } ] = await Promise.all([
+      supabase.from('tracks').select('*, albums(title, cover, artist)').ilike('title', q).limit(10),
+      supabase.from('albums').select('artist, cover, id').ilike('artist', q).limit(20),
+      supabase.from('albums').select('*').ilike('title', q).limit(10)
+    ]);
 
-    // To get trackIndex, we'd ideally have it in the DB or calculate it.
-    // Since we don't have it indexed, we'll fetch others in the same album to find position or just mock it.
-    // For migration purposes, I'll calculate it by fetching the album's tracks.
-    const songs = await Promise.all((songsData || []).map(async (song) => {
-       const { data: albumTracks } = await supabase
-         .from('tracks')
-         .select('id')
-         .eq('album_id', song.album_id)
-         .order('id', { ascending: true });
-       
-       const index = albumTracks?.findIndex(t => t.id === song.id) || 0;
-       
-       return {
-         ...song,
-         albumTitle: song.albums?.title,
-         albumCover: song.albums?.cover,
-         albumArtist: song.albums?.artist,
-         trackIndex: index
-       };
+    if (songsError) throw songsError;
+
+    // Batch process track indices to avoid N+1 queries
+    const albumIds = [...new Set((songsData || []).map(s => s.album_id))];
+    let albumTracksMap = {};
+
+    if (albumIds.length > 0) {
+      const { data: allAlbumTracks } = await supabase
+        .from('tracks')
+        .select('id, album_id')
+        .in('album_id', albumIds)
+        .order('id', { ascending: true });
+
+      (allAlbumTracks || []).forEach(t => {
+        if (!albumTracksMap[t.album_id]) albumTracksMap[t.album_id] = [];
+        albumTracksMap[t.album_id].push(t.id);
+      });
+    }
+
+    const songs = (songsData || []).map(song => ({
+      ...song,
+      albumTitle: song.albums?.title,
+      albumCover: song.albums?.cover,
+      albumArtist: song.albums?.artist,
+      trackIndex: (albumTracksMap[song.album_id] || []).indexOf(song.id) || 0
     }));
 
-    // 2. Fetch matching Artists (Unique artists from albums)
-    const { data: artistsData } = await supabase
-      .from('albums')
-      .select('artist, cover, id')
-      .ilike('artist', q)
-      .limit(20);
-    
-    // Deduplicate artists in JS
+    // Deduplicate artists
     const uniqueArtists = [];
     const seenArtists = new Set();
     (artistsData || []).forEach(a => {
@@ -61,28 +61,15 @@ export const GET = async (context) => {
       }
     });
 
-    // 3. Fetch matching Albums
-    const { data: albums } = await supabase
-      .from('albums')
-      .select('*')
-      .ilike('title', q)
-      .limit(10);
-
     const playlists = [];
     if (query.toLowerCase().includes('like') || query.toLowerCase().includes('song')) {
-      playlists.push({
-        id: 'liked-songs',
-        title: 'Liked Songs',
-        artist: 'Playlist',
-        isLikedSongs: true,
-        cover: 'gradient'
-      });
+      playlists.push({ id: 'liked-songs', title: 'Liked Songs', artist: 'Playlist', isLikedSongs: true, cover: 'gradient' });
     }
 
     const responseData = {
       songs,
       artists: uniqueArtists.slice(0, 5),
-      albums: albums || [],
+      albums: albumsData || [],
       playlists: playlists
     };
 

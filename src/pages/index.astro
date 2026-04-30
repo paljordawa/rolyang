@@ -7,18 +7,23 @@ import CompactAlbumCard from '../components/CompactAlbumCard.astro';
 import PlayButton from '../components/PlayButton.astro';
 
 const supabase = createSupabaseServerClient(Astro);
-const { data } = await supabase.auth.getUser();
-const user = data?.user;
+// Parallelize auth and data fetching
+const [{ data: authData }, { data: albumsResult, error }] = await Promise.all([
+  supabase.auth.getUser(),
+  supabase.from('albums')
+    .select('id, title, artist, cover')
+    .limit(12)
+]);
+const albums = albumsResult || [];
+const user = authData?.user;
 
-// Protect the entire application by bouncing unauthenticated users exactly to the full screen login page
+console.log('DEBUG index.astro: albums found:', albums.length);
+if (error) console.error('DEBUG index.astro: error fetching albums:', error);
+
+// Protect the entire application
 if (!user) {
   return Astro.redirect('/login');
 }
-
-const { data: albums = [], error } = await supabase
-  .from('albums')
-  .select('*')
-  .limit(12);
 
 if (error) {
   console.error("Supabase error:", error);

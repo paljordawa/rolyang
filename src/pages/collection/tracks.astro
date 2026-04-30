@@ -83,10 +83,16 @@ import Layout from '../../layouts/Layout.astro';
     if (!container) return;
 
     const allAlbums = (window as any).__libraryData as any[];
+    if (!allAlbums || !Array.isArray(allAlbums)) {
+      console.warn('[Tracks] Library data not found, skipping render');
+      return;
+    }
+
     const likes = $likedTracks.get();
     const likedTracks: any[] = [];
 
     allAlbums.forEach(album => {
+      if (!album.chapters) return;
       album.chapters.forEach((ch: any, i: number) => {
         if ((likes as any)[`${album.id}:${ch.id}`]) {
           likedTracks.push({
