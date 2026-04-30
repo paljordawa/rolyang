@@ -7,7 +7,11 @@ export function createSupabaseServerClient(context) {
     {
       cookies: {
         getAll() {
-          return parseCookieHeader(context.request.headers.get('Cookie') ?? '')
+          try {
+            return parseCookieHeader(context.request.headers.get('Cookie') ?? '')
+          } catch (e) {
+            return []
+          }
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) =>

@@ -3,15 +3,8 @@
 import Layout from '../../../layouts/Layout.astro';
 import albums from '../../../data/data.json';
 
-export const prerender = true;
-
-export async function getStaticPaths() {
-  return albums.flatMap((b) =>
-    b.chapters.map((_, i) => ({ params: { albumId: b.id, chapterId: String(i) } }))
-  );
-}
-
 const { albumId, chapterId } = Astro.params;
+
 const album = albums.find(b => b.id === albumId);
 const chapter = album?.chapters?.[Number(chapterId)];
 
