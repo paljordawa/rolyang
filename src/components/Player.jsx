@@ -93,13 +93,15 @@ export default function Player({ books: albums = [], startBookId = null, startCh
   }, [volume]);
 
   useEffect(() => {
+    // Guard: only sync when user has intentionally started playback.
+    // Without this, the player defaults to the first track (Stay) on mount
+    // and incorrectly writes its ID into the store before any play action.
+    if (!currentTrack.bookId) return;
     if (chap && chap.id && (currentTrack.trackId !== chap.id || currentTrack.title !== chap.title)) {
-       // This ensures the global store has the actual track title/identity 
-       // even if started from a bookId/index pair.
-       console.log('Player updating track:', album.id, chapIdx, isPlaying, chap.id, chap.title, album.artist);
+       console.log('Player syncing track to store:', album.id, chapIdx, chap.id);
        updateTrack(album.id, chapIdx, isPlaying, chap.id, chap.title, album.artist);
     }
-  }, [chap?.id, currentTrack.trackId, album.id, chapIdx, isPlaying]);
+  }, [chap?.id, currentTrack.trackId, currentTrack.bookId, album.id, chapIdx]);
 
   // Adjust chapIdx when album changes to keep the same track if possible
   useEffect(() => {

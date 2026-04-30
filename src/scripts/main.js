@@ -612,8 +612,9 @@ export function updateRows() {
   if (!track) return;
 
   document.querySelectorAll('[data-player-row]').forEach(row => {
-    const isCurrent = row.dataset.trackId === String(track.trackId) || 
-                     (String(row.dataset.playerAlbum) === String(track.bookId) && Number(row.dataset.playerChap) === Number(track.chapIndex));
+    // Highlight only by trackId — whichever track is playing gets highlighted
+    // regardless of whether it's on an album, playlist, or artist page.
+    const isCurrent = String(row.dataset.trackId) === String(track.trackId);
     
     const title = row.querySelector('[data-player-title]');
     const index = row.querySelector('[data-index-label]');

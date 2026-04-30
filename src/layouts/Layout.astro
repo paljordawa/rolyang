@@ -11,7 +11,7 @@ const supabase = createSupabaseServerClient(Astro);
 const [ { data: authData }, { data: albumsResult } ] = await Promise.all([
   supabase.auth.getUser(),
   supabase.from('albums')
-    .select('id, title, artist, cover, tracks(id, title, audio_url, album_id)')
+    .select('id, title, artist, cover, tracks(id, title, audio, album_id)')
     .order('id', { ascending: true })
 ]);
 
@@ -23,7 +23,7 @@ let playlists = [];
 if (user) {
   const { data: userPlaylists } = await supabase
     .from('playlists')
-    .select('id, title, cover, playlist_tracks(track_id, tracks(id, title, audio_url, albums(id, title, artist, cover)))')
+    .select('id, title, cover, playlist_tracks(track_id, tracks(id, title, audio, albums(id, title, artist, cover)))')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   playlists = userPlaylists || [];
