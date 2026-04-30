@@ -220,8 +220,8 @@ export default function Player({ books: albums = [], startBookId = null, startCh
         {/* 1. Track Info (Visual Core) */}
         <div className="flex items-center gap-3 w-[70%] md:w-[30%] pointer-events-none md:pl-4">
           {album.cover && (
-             <div className="relative shrink-0 group/cover">
-                <img src={album.cover} alt="Cover" className="w-[42px] h-[42px] md:w-16 md:h-16 rounded-md object-cover shadow-2xl ring-1 ring-white/10 group-hover/cover:scale-105 transition-transform duration-500" />
+             <div className="relative shrink-0 group">
+                <img src={album.cover} alt="Cover" className="w-[42px] h-[42px] md:w-16 md:h-16 rounded-md object-cover shadow-2xl ring-1 ring-white/10 group-hover:scale-105 transition-transform duration-500" />
              </div>
           )}
           <div className="flex flex-col min-w-0 flex-1 justify-center h-full">
