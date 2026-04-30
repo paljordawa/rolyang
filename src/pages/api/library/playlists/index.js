@@ -3,8 +3,8 @@ import { createSupabaseServerClient } from '../../../../lib/supabaseServer';
 export const GET = async (context) => {
   try {
     const supabase = createSupabaseServerClient(context);
-    const { data } = await supabase.auth.getUser();
-    const user = data?.user;
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData?.user;
 
     if (!user) {
        return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -32,8 +32,8 @@ export const POST = async (context) => {
   const { request } = context;
   try {
     const supabase = createSupabaseServerClient(context);
-    const { data } = await supabase.auth.getUser();
-    const user = data?.user;
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData?.user;
 
     if (!user) {
        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
