@@ -84,7 +84,7 @@ const ogImageUrl = siteOrigin ? new URL(ogImagePath, siteOrigin).toString() : og
     <meta name="twitter:title" content={siteTitle} />
     <meta name="twitter:description" content={siteDescription} />
     <meta name="twitter:image" content={ogImageUrl} />
-    <link rel="stylesheet" href="/src/styles.css" />
+
     <ClientRouter />
     <!-- client-only module for navigation and player helpers -->
     <!-- Define playerPlay FIRST, before any other scripts -->
@@ -92,13 +92,13 @@ const ogImageUrl = siteOrigin ? new URL(ogImagePath, siteOrigin).toString() : og
       import { navigate } from 'astro:transitions/client';
 
       // Maps the legacy appNavigate to Astro's official router
-      (window as any).appNavigate = (href: string) => {
+      window.appNavigate = (href) => {
         console.log('[App] Navigating to:', href);
         navigate(href);
       };
 
       // Define playerPlay FIRST
-      (window as any).playerPlay = (window as any).playerPlay || function (payload: any) {
+      window.playerPlay = window.playerPlay || function (payload) {
         window.dispatchEvent(new CustomEvent('player:play', { detail: payload }));
       };
     </script>
@@ -256,11 +256,11 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
           if (!container) return;
           
           // Ensure data is available
-          if (!(window as any).__libraryData) {
+          if (!window.__libraryData) {
             const dataTag = document.getElementById('library-data-json');
             if (dataTag) {
                try {
-                 (window as any).__libraryData = JSON.parse(dataTag.textContent || '[]');
+                 window.__libraryData = JSON.parse(dataTag.textContent || '[]');
                  console.log('Library data parsed successfully');
                } catch(e) {
                  console.error('Failed to parse library data', e);
@@ -268,7 +268,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
             }
           }
 
-          const allAlbums = (window as any).__libraryData as any[];
+          const allAlbums = window.__libraryData;
           if (!Array.isArray(allAlbums)) {
             console.error('Library data is not an array', allAlbums);
             return;
@@ -423,21 +423,21 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
         import { $followedArtists } from '../store/playerStore';
 
         // Global creation function
-        let currentEditId: string | null = null;
-        let trackToAddOnCreate: string | null = null;
-        (window as any).createPlaylist = (trackId?: string) => {
+        let currentEditId = null;
+        let trackToAddOnCreate = null;
+        window.createPlaylist = (trackId) => {
           currentEditId = null;
           trackToAddOnCreate = trackId || null;
           const modal = document.getElementById('create-playlist-modal');
           const titleEl = document.getElementById('modal-title');
           const confirmBtn = document.getElementById('confirm-playlist-btn');
-          const input = document.getElementById('playlist-name-input') as HTMLInputElement;
-          const descInput = document.getElementById('playlist-description-input') as HTMLInputElement;
+          const input = document.getElementById('playlist-name-input');
+          const descInput = document.getElementById('playlist-description-input');
           
           if (modal && input && titleEl && confirmBtn) {
             titleEl.textContent = 'Create Playlist';
             confirmBtn.textContent = 'Create';
-            input.value = `My Playlist #${((window as any).__userPlaylists?.length || 0) + 1}`;
+            input.value = `My Playlist #${(window.__userPlaylists?.length || 0) + 1}`;
             descInput.value = '';
             modal.classList.remove('hidden');
             input.focus();
@@ -445,13 +445,13 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
           }
         };
 
-        (window as any).openEditPlaylistModal = (data: { id: string, title: string, description: string }) => {
+        window.openEditPlaylistModal = (data) => {
           currentEditId = data.id;
           const modal = document.getElementById('create-playlist-modal');
           const titleEl = document.getElementById('modal-title');
           const confirmBtn = document.getElementById('confirm-playlist-btn');
-          const input = document.getElementById('playlist-name-input') as HTMLInputElement;
-          const descInput = document.getElementById('playlist-description-input') as HTMLInputElement;
+          const input = document.getElementById('playlist-name-input');
+          const descInput = document.getElementById('playlist-description-input');
 
           if (modal && input && titleEl && confirmBtn) {
             titleEl.textContent = 'Edit Details';
@@ -501,7 +501,7 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
               if (res.ok) {
                 if (!isEdit) {
                   const newPlaylist = await res.json();
-                  (window as any).__userPlaylists = [newPlaylist, ...((window as any).__userPlaylists || [])];
+                  window.__userPlaylists = [newPlaylist, ...(window.__userPlaylists || [])];
                   
                   // Automatically add track if we came from one
                   if (trackToAddOnCreate) {
@@ -524,8 +524,8 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
                   const descEl = document.querySelector('[data-playlist-description]') as HTMLElement;
                   if (titleEl) titleEl.textContent = newTitle;
                   if (descEl) descEl.textContent = newDescription;
-                  if ((window as any).__userPlaylists) {
-                    (window as any).__userPlaylists = ((window as any).__userPlaylists || []).map((p: any) => {
+                  if (window.__userPlaylists) {
+                    window.__userPlaylists = (window.__userPlaylists || []).map((p) => {
                       if (p.id === currentEditId) return { ...p, title: newTitle, description: newDescription };
                       return p;
                     });
@@ -805,16 +805,16 @@ console.log('Script initialization complete, window.playerPlay:', typeof window.
         <script>
 (() => {
 function reveal() {
-  const shell = document.querySelector('[data-player-shell]') as HTMLElement;
+  const shell = document.querySelector('[data-player-shell]');
   if (!shell) return;
   if (shell.dataset.hidden !== 'false') shell.dataset.hidden = 'false';
 }
 window.addEventListener('player:now-playing', (ev) => {
-  if (ev && (ev as CustomEvent).detail && (ev as CustomEvent).detail.isPlaying !== false) reveal();
+  if (ev && ev.detail && ev.detail.isPlaying !== false) reveal();
 });
 window.addEventListener('player:play', () => reveal());
 try {
-  if ((window as any).__playerNowPlaying && (window as any).__playerNowPlaying.isPlaying !== false) reveal();
+  if (window.__playerNowPlaying && window.__playerNowPlaying.isPlaying !== false) reveal();
 } catch (e) {}
 })();
         </script>
@@ -825,15 +825,14 @@ try {
 
       // 1. Global Click Delegation for Heart Icons
       document.addEventListener('click', (e) => {
-        const btn = (e.target as HTMLElement).closest('.js-like-btn') as HTMLElement;
+        const btn = e.target.closest('.js-like-btn');
         if (btn) {
           const albumId = btn.getAttribute('data-album-id');
           const chapId = btn.getAttribute('data-chap-id');
           if (albumId && chapId) {
             // @ts-ignore
             // @ts-ignore
-            if (window.__nanostores_player && typeof (window as any).__nanostores_player.toggleLike === 'function') {
-              // @ts-ignore
+            if (window.__nanostores_player && typeof window.__nanostores_player.toggleLike === 'function') {
               window.__nanostores_player.toggleLike(albumId, chapId);
             } else {
               toggleLike(albumId, chapId);
@@ -843,8 +842,8 @@ try {
       });
 
       // 2. Global Sync: Update ALL heart icons when state changes
-      $likedTracks.subscribe((likes: Record<string, boolean>) => {
-        document.querySelectorAll('.js-like-btn').forEach((btn: Element) => {
+      $likedTracks.subscribe((likes) => {
+        document.querySelectorAll('.js-like-btn').forEach((btn) => {
           const albumId = btn.getAttribute('data-album-id');
           const chapId = btn.getAttribute('data-chap-id');
           const isLiked = !!likes[`${albumId}:${chapId}`];
@@ -872,7 +871,6 @@ try {
           if (name) {
             // @ts-ignore
             if (window.__nanostores_player) {
-              // @ts-ignore
               window.__nanostores_player.toggleFollow(name);
             } else {
               toggleFollow(name);
@@ -881,12 +879,12 @@ try {
         }
       });
 
-      $followedArtists.subscribe((followed: Record<string, boolean>) => {
-        document.querySelectorAll('.js-follow-btn').forEach((btn: Element) => {
+      $followedArtists.subscribe((followed) => {
+        document.querySelectorAll('.js-follow-btn').forEach((btn) => {
           const name = btn.getAttribute('data-artist-name');
           const isFollowed = !!followed[name || ""];
           
-          (btn as HTMLElement).textContent = isFollowed ? 'Following' : 'Follow';
+          btn.textContent = isFollowed ? 'Following' : 'Follow';
           if (isFollowed) {
              btn.classList.add('bg-[#1db954]', 'border-[#1db954]', 'text-black');
              btn.classList.remove('border-white/30', 'text-white');
@@ -899,14 +897,14 @@ try {
 
       // --- Add to Playlist Global Logic ---
       document.addEventListener('click', async (e) => {
-        const btn = (e.target as HTMLElement).closest('.js-add-to-playlist-btn') as HTMLElement;
+        const btn = e.target.closest('.js-add-to-playlist-btn');
         if (!btn) return;
         
         const trackId = btn.getAttribute('data-track-id');
         if (trackId) showPlaylistSelector(trackId, btn);
       });
 
-      function showPlaylistSelector(trackId: string, anchor: HTMLElement) {
+      function showPlaylistSelector(trackId, anchor) {
         let selector = document.getElementById('global-playlist-selector');
         if (!selector) {
           selector = document.createElement('div');
@@ -915,10 +913,10 @@ try {
           document.body.appendChild(selector);
         }
 
-        const playlists = (window as any).__userPlaylists || [];
+        const playlists = window.__userPlaylists || [];
         selector.innerHTML = `
           <div class="px-4 py-2 text-[11px] font-bold text-white/50 uppercase tracking-wider">Add to playlist</div>
-          ${playlists.map((p: any) => `
+          ${playlists.map((p) => `
             <div class="px-4 py-2 text-sm hover:bg-white/10 cursor-pointer text-white truncate" data-playlist-id="${p.id}">${p.title}</div>
           `).join('')}
         `;
@@ -965,7 +963,7 @@ try {
 
       // --- Track Context Menu ---
       document.addEventListener('click', (e) => {
-        const btn = (e.target as HTMLElement).closest('.js-track-more-btn') as HTMLElement;
+        const btn = e.target.closest('.js-track-more-btn');
         if (!btn) return;
         
         const trackId = btn.getAttribute('data-track-id');
@@ -1043,7 +1041,7 @@ try {
         });
 
         menu.querySelector('#ctx-remove-from-playlist')?.addEventListener('click', async () => {
-          const playlistId = (menu?.querySelector('#ctx-remove-from-playlist') as HTMLElement).getAttribute('data-playlist-id');
+          const playlistId = menu?.querySelector('#ctx-remove-from-playlist').getAttribute('data-playlist-id');
           menu?.classList.add('hidden');
           if (!playlistId) return;
 
@@ -1121,19 +1119,19 @@ try {
     <script>
       // Highlight active track in TrackRows continuously synced via Nanostores
       (function() {
-        var highlightInterval: any = null;
+        var highlightInterval = null;
         
         var updateRows = function() {
-          if (!(window as any).__nanostores_player || !(window as any).__nanostores_player.$currentTrack) return;
+          if (!window.__nanostores_player || !window.__nanostores_player.$currentTrack) return;
           
-          var track = (window as any).__nanostores_player.$currentTrack.get();
-          var playing = (window as any).__nanostores_player.$isPlaying.get();
+          var track = window.__nanostores_player.$currentTrack.get();
+          var playing = window.__nanostores_player.$isPlaying.get();
           if (!track) return;
 
           console.log('updateRows called, track:', track, 'playing:', playing);
 
           document.querySelectorAll('[data-player-row]').forEach(function(el) {
-            var row = el as HTMLElement;
+            var row = el;
             var rowTrackId = row.dataset.trackId;
             var rowAlbumId = row.dataset.playerAlbum || row.dataset.playerBook;
             var rowChapIdx = row.dataset.playerChap;
@@ -1170,7 +1168,7 @@ try {
             console.log('Final isCurrent:', isCurrent);
             
             var titleElement = row.querySelector('[data-player-title]');
-            var indexLabel = row.querySelector('[data-index-label]') as HTMLElement;
+            var indexLabel = row.querySelector('[data-index-label]');
             
             if (isCurrent) {
               row.setAttribute('data-active', 'true');
@@ -1233,19 +1231,19 @@ try {
           });
         };
         
-        (window as any)._updatePlayerRows = updateRows;
+        window._updatePlayerRows = updateRows;
         
         function initTrackHighlighting() {
           if (highlightInterval !== null) clearInterval(highlightInterval);
           
           highlightInterval = setInterval(function() {
             // Wait for the React component/store to attach to window
-            if ((window as any).__nanostores_player && (window as any).__nanostores_player.$currentTrack) {
+            if (window.__nanostores_player && window.__nanostores_player.$currentTrack) {
               if (highlightInterval !== null) clearInterval(highlightInterval);
               
               // Subscribe to changes
-              (window as any).__nanostores_player.$currentTrack.listen(updateRows);
-              (window as any).__nanostores_player.$isPlaying.listen(updateRows);
+              window.__nanostores_player.$currentTrack.listen(updateRows);
+              window.__nanostores_player.$isPlaying.listen(updateRows);
               
               // Ensure we re-highlight after navigation and page swaps
               document.addEventListener('astro:page-load', updateRows);
