@@ -3,7 +3,8 @@ import { createSupabaseServerClient } from '../../../lib/supabaseServer';
 export const GET = async (context) => {
   try {
     const supabase = createSupabaseServerClient(context);
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
 
     if (!user) {
       return new Response(JSON.stringify({ likedTracks: {}, followedArtists: {}, playlists: [] }), {

@@ -7,7 +7,8 @@ import CompactAlbumCard from '../components/CompactAlbumCard.astro';
 import PlayButton from '../components/PlayButton.astro';
 
 const supabase = createSupabaseServerClient(Astro);
-const { data: { user } } = await supabase.auth.getUser();
+const { data } = await supabase.auth.getUser();
+const user = data?.user;
 
 // Protect the entire application by bouncing unauthenticated users exactly to the full screen login page
 if (!user) {

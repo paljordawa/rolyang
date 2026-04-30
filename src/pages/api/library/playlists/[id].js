@@ -51,7 +51,8 @@ export const PATCH = async (context) => {
   const { id } = params;
   try {
     const supabase = createSupabaseServerClient(context);
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
 
     if (!user) {
        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
@@ -79,7 +80,8 @@ export const DELETE = async (context) => {
   const { id } = params;
   try {
     const supabase = createSupabaseServerClient(context);
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
 
     if (!user) {
        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });

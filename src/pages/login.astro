@@ -4,9 +4,8 @@ import { ClientRouter } from "astro:transitions";
 import "../styles.css";
 
 const supabase = createSupabaseServerClient(Astro);
-const {
-  data: { user },
-} = await supabase.auth.getUser();
+const { data } = await supabase.auth.getUser();
+const user = data?.user;
 
 if (user) {
   return Astro.redirect("/");
