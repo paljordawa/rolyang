@@ -71,6 +71,15 @@ export default function Player({ books: albums = [], startBookId = null, startCh
       cover: album.cover
     });
 
+    // Increment play count - fire-and-forget, never blocks playback
+    if (chap.id) {
+      fetch('/api/library/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trackId: chap.id })
+      }).catch(() => {});
+    }
+
     if (isPlaying) {
        audioService.play();
     }

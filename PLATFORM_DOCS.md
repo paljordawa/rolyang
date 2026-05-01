@@ -216,6 +216,61 @@ npx cap open ios
 | `convert-to-aac.mjs` | Batch-converts MP3/WAV → AAC .m4a using ffmpeg |
 | `migrate-to-supabase-storage.mjs` | Uploads audio + thumbnails to Supabase Storage, updates DB URLs |
 | `update-cover-urls.mjs` | Updates album cover URLs in DB (one-off, post-migration) |
+| **`add-album.mjs`** | **Full one-command workflow to add a new album (see Section 9)** |
+
+---
+
+## 9. Adding New Music (One-Command Workflow)
+
+Use `scripts/add-album.mjs` to add a new album and its tracks in a single step.
+
+### What you need
+
+1. A folder containing the audio files (MP3, WAV, FLAC, or M4A) — **files are sorted alphabetically, so name them with track numbers (e.g. `01-song.mp3`, `02-song.mp3`)**
+2. A cover image (JPG or PNG — any size, will be auto-resized to 400×400 WebP)
+3. A unique album ID (e.g. `album-4`)
+
+### Command
+
+```powershell
+$env:PUBLIC_SUPABASE_URL="https://qmmawqxonyyyzphfnemd.supabase.co"
+$env:SUPABASE_SERVICE_ROLE_KEY="<your service role key>"
+
+node scripts/add-album.mjs `
+  --id        "album-4" `
+  --title     "My New Album" `
+  --artist    "Artist Name" `
+  --cover     "C:/path/to/cover.jpg" `
+  --audio-dir "C:/path/to/audio/folder"
+```
+
+### What happens automatically
+
+| Step | Action |
+|---|---|
+| 1 | Cover image → compressed to WebP (400×400, q82) |
+| 2 | All audio files → converted to AAC .m4a (128kbps, +faststart) |
+| 3 | Cover uploaded to Supabase Storage `thumbnails` bucket |
+| 4 | All tracks uploaded to Supabase Storage `audio` bucket |
+| 5 | Album row inserted into `albums` table |
+| 6 | All track rows inserted into `tracks` table |
+
+### Track ID format
+
+Tracks are automatically assigned IDs in the format `{album-id}-t{number}`:
+- `album-4-t1`, `album-4-t2`, `album-4-t3`, etc.
+
+### Track titles
+
+Titles are derived from filenames by stripping leading track numbers:
+- `01 - Midnight Rain.mp3` → title: `Midnight Rain`
+- `03_Something Good.mp3` → title: `Something Good`
+
+You can edit titles manually in the Supabase Dashboard → Table Editor → `tracks` after upload if needed.
+
+> [!TIP]
+> After running the script, your new album is immediately live at `/album/{album-id}` — no deployment needed since data is fetched from Supabase at request time.
+
 
 Run scripts with env vars:
 ```bash

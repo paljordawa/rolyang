@@ -1,0 +1,171 @@
+---
+import { createSupabaseServerClient } from '../../lib/supabaseServer';
+
+const supabase = createSupabaseServerClient(Astro);
+const { data: { user } } = await supabase.auth.getUser();
+
+// If already an admin, go straight to dashboard
+if (user && user.email === 'paljordawa@gmail.com') {
+  return Astro.redirect('/admin');
+}
+
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login — Rolyang</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Outfit', sans-serif;
+      background: #07070a;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .login-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 48px;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 400px;
+      backdrop-filter: blur(20px);
+      text-align: center;
+    }
+    h1 { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+    p { color: rgba(255,255,255,0.4); font-size: 14px; margin-bottom: 32px; }
+    
+    .form-group { text-align: left; margin-bottom: 20px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+    input {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      box-sizing: border-box;
+      transition: all 0.2s;
+    }
+    input:focus { outline: none; border-color: #6366f1; background: rgba(255,255,255,0.08); }
+    
+    button {
+      width: 100%;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+    button:hover { background: #4f46e5; transform: translateY(-1px); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    #error-msg {
+      background: rgba(239,68,68,0.1);
+      color: #f87171;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: none;
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+    
+    .back-link {
+      display: inline-block;
+      margin-top: 24px;
+      color: rgba(255,255,255,0.3);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #fff; }
+  </style>
+</head>
+<body>
+
+<div class="login-card">
+  <h1>Admin Portal</h1>
+  <p>Secure authentication required</p>
+  
+  <div id="error-msg"></div>
+  
+  <div class="form-group">
+    <label>Admin Email</label>
+    <input type="email" id="email" placeholder="name@domain.com" />
+  </div>
+  
+  <div class="form-group">
+    <label>Password</label>
+    <input type="password" id="password" placeholder="••••••••" />
+  </div>
+  
+  <button id="login-btn" onclick="handleLogin()">Sign In to Dashboard</button>
+  
+  <a href="/" class="back-link">← Return to Public Site</a>
+</div>
+
+<script is:inline define:vars={{ SUPABASE_URL, SUPABASE_ANON_KEY }}>
+  async function handleLogin() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('login-btn');
+    const errEl = document.getElementById('error-msg');
+    
+    if (!email || !password) return;
+
+    // Hardcoded restriction for the admin panel
+    if (email !== 'paljordawa@gmail.com') {
+      errEl.textContent = "Access Denied: This account does not have administrative privileges.";
+      errEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Authenticating...";
+    errEl.style.display = 'none';
+
+    try {
+      const { createBrowserClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/ssr@latest/+esm');
+      const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) throw error;
+      
+      // Success
+      window.location.href = '/admin';
+      
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = "Sign In to Dashboard";
+    }
+  }
+
+  // Allow enter key to submit
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin();
+  });
+</script>
+
+</body>
+</html>

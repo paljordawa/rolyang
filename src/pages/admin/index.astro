@@ -1,0 +1,606 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { createSupabaseServerClient } from '../../lib/supabaseServer';
+import { createSupabaseAdminClient } from '../../lib/supabaseAdmin';
+
+const supabase = createSupabaseServerClient(Astro);
+const { data: { session } } = await supabase.auth.getSession();
+const ADMIN_EMAIL = 'paljordawa@gmail.com';
+
+if (!session || session.user.email !== ADMIN_EMAIL) {
+  return Astro.redirect('/admin/login');
+}
+
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+const sessionToken = session?.access_token || '';
+
+const admin = createSupabaseAdminClient();
+
+let allUsers: any[] = [];
+try {
+  const { data: users } = await admin.auth.admin.listUsers();
+  allUsers = users?.users || [];
+} catch (e) {}
+
+const [{ data: albums }, { data: tracks }, { data: playlists }] = await Promise.all([
+  admin.from('albums').select('*').order('id'),
+  admin.from('tracks').select('*').order('play_count', { ascending: false }),
+  admin.from('playlists').select('*')
+]);
+
+const allAlbums = albums || [];
+const allTracks = tracks || [];
+const allPlaylists = playlists || [];
+
+console.log(`[Admin Data Check] Albums: ${allAlbums.length}, Tracks: ${allTracks.length}, Users: ${allUsers.length}`);
+
+// Calculate Audio Stats
+const totalPlays = allTracks.reduce((sum, t) => sum + (t.play_count || 0), 0);
+const topTracks = allTracks.slice(0, 5);
+
+// Calculate Top Artists
+const artistPlaysMap = {};
+allTracks.forEach(t => {
+  const album = allAlbums.find(a => a.id === t.album_id);
+  if (album && album.artist) {
+    artistPlaysMap[album.artist] = (artistPlaysMap[album.artist] || 0) + (t.play_count || 0);
+  }
+});
+const topArtists = Object.entries(artistPlaysMap)
+  .map(([artist, plays]) => ({ artist, plays }))
+  .sort((a, b) => b.plays - a.plays)
+  .slice(0, 5);
+
+// Find most popular album
+const albumPlays = allAlbums.map(a => {
+  const p = allTracks.filter(t => t.album_id === a.id).reduce((sum, t) => sum + (t.play_count || 0), 0);
+  return { ...a, totalPlays: p };
+}).sort((a, b) => b.totalPlays - a.totalPlays);
+
+const stats = {
+  totalAlbums: allAlbums.length,
+  totalUsers: allUsers.length,
+  totalTracks: allTracks.length,
+  totalPlaylists: allPlaylists.length,
+  totalPlays: totalPlays.toLocaleString(),
+  topAlbum: albumPlays[0]?.title || 'None'
+};
+---
+
+<AdminLayout title="Rolyang Admin">
+  <script is:inline define:vars={{ SUPABASE_URL, SUPABASE_ANON_KEY, sessionToken }}>
+    window.SUPABASE_URL = SUPABASE_URL;
+    window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
+    window.SESSION_TOKEN = sessionToken;
+  </script>
+
+  <div class="admin-layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">Rolyang Admin</div>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" onclick="switchTab('library')">
+          <span class="icon">🎵</span> Music Library
+        </button>
+        <button class="nav-item" onclick="switchTab('analytics')">
+          <span class="icon">📈</span> Audio Analytics
+        </button>
+        <button class="nav-item" onclick="switchTab('users')">
+          <span class="icon">👥</span> User Management
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <p>{session.user.email}</p>
+        <button onclick="supabase.auth.signOut().then(() => location.href='/')">Sign Out</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <!-- Library Tab -->
+      <section id="tab-library" class="tab-content active">
+        <header class="tab-header">
+          <div class="header-info">
+            <h2>Music Library</h2>
+            <div class="stats-overview">
+              <div class="stat-card">
+                <span class="stat-value">{stats.totalAlbums}</span>
+                <span class="stat-label">Total Albums</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-value">{stats.totalTracks}</span>
+                <span class="stat-label">Total Tracks</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-value">{stats.totalPlaylists}</span>
+                <span class="stat-label">Total Playlists</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-value">{stats.totalPlays}</span>
+                <span class="stat-label">Total Plays</span>
+              </div>
+            </div>
+          </div>
+          <div class="header-actions">
+            <div class="sort-controls">
+              <select id="album-sort" onchange="sortAlbums()" class="admin-select">
+                <option value="default">Sort: Default (ID)</option>
+                <option value="az">Sort: A-Z (Title)</option>
+                <option value="plays">Sort: Most Played</option>
+              </select>
+            </div>
+            <div class="search-bar">
+              <input type="text" id="album-search" placeholder="Search albums..." oninput="filterAlbums()" />
+            </div>
+            <a href="/admin/add-album" class="btn-add">Add Album</a>
+          </div>
+        </header>
+
+        <div class="album-list" id="album-list-container">
+          {allAlbums.map(album => {
+            const ts = allTracks.filter(t => t.album_id === album.id);
+            const ap = ts.reduce((sum, t) => sum + (t.play_count || 0), 0);
+            return (
+              <div class="album-wrapper" data-search-text={`${album.title} ${album.artist}`.toLowerCase()} data-title={album.title} data-plays={ap} data-id={album.id}>
+                <div class="album-row">
+                  <img src={album.cover} alt="" />
+                  <div class="details">
+                    <h3>{album.title}</h3>
+                    <p>{album.artist} • {ts.length} Tracks • {ap.toLocaleString()} Plays</p>
+                  </div>
+                  <div class="row-actions">
+                    <button class="btn-view" onclick={`toggleTracks('tracks-${album.id}')`}>Tracks</button>
+                    <button class="btn-edit" onclick={`openEdit('${album.id}', ${JSON.stringify(album.title)}, ${JSON.stringify(album.artist)}, ${JSON.stringify(album.cover)})`}>Edit</button>
+                    <button class="btn-delete" onclick={`delAlbum('${album.id}', ${JSON.stringify(album.title)}, event)`}>Delete</button>
+                  </div>
+                </div>
+                
+                <div id={`tracks-${album.id}`} class="album-tracks-expansion" style="display: none;">
+                  <div class="expansion-header">
+                    <h4>Tracklist</h4>
+                  </div>
+                  {ts.length === 0 ? (
+                    <div class="empty-tracks">No tracks found.</div>
+                  ) : (
+                    <div class="track-table">
+                      {ts.map((t, index) => (
+                        <div class="track-row">
+                          <div class="track-num">{index + 1}</div>
+                          <div class="track-info">
+                            <span class="track-title">{t.title}</span>
+                          </div>
+                          <div class="track-plays">{(t.play_count || 0).toLocaleString()} plays</div>
+                          <div class="track-preview">
+                            <audio controls src={t.audio} preload="none" class="admin-audio"></audio>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      <!-- Analytics Tab -->
+      <section id="tab-analytics" class="tab-content">
+        <header class="tab-header">
+          <h2>Audio Analytics</h2>
+        </header>
+        
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <h3>Top 5 Tracks</h3>
+            <div class="stat-list">
+              {topTracks.map(t => (
+                <div class="stat-item">
+                  <div class="stat-item-info">
+                    <span class="track-title">{t.title}</span>
+                    <span class="track-album">{allAlbums.find(a => a.id === t.album_id)?.title}</span>
+                  </div>
+                  <strong class="play-count">{(t.play_count || 0).toLocaleString()} plays</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div class="analytics-col">
+            <div class="analytics-card" style="margin-bottom: 20px;">
+              <h3>Most Popular Album</h3>
+              <div class="popular-album">
+                {albumPlays[0] && (
+                  <>
+                    <img src={albumPlays[0].cover} alt="" />
+                    <div class="pop-details">
+                      <h4>{albumPlays[0].title}</h4>
+                      <p>{albumPlays[0].artist}</p>
+                      <div class="pop-plays">{(albumPlays[0].totalPlays || 0).toLocaleString()} Total Plays</div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div class="analytics-card">
+              <h3>Top Artists</h3>
+              <div class="stat-list" style="margin-top: 15px;">
+                {topArtists.map((artist, idx) => (
+                  <div class="stat-item" style="padding-bottom: 8px;">
+                    <div class="stat-item-info">
+                      <span class="track-title" style="display: flex; gap: 10px;">
+                        <span style="opacity: 0.5;">#{idx + 1}</span> {artist.artist}
+                      </span>
+                    </div>
+                    <strong class="play-count" style="font-size: 0.9rem;">{artist.plays.toLocaleString()} plays</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Users Tab -->
+      <section id="tab-users" class="tab-content">
+        <header class="tab-header">
+          <div class="header-info">
+            <h2>User Management</h2>
+          </div>
+          <div class="header-actions">
+            <div class="sort-controls">
+              <select id="user-sort" onchange="sortUsers()" class="admin-select">
+                <option value="newest">Sort: Newest First</option>
+                <option value="oldest">Sort: Oldest First</option>
+                <option value="playlists">Sort: Most Playlists</option>
+              </select>
+            </div>
+            <div class="search-bar">
+              <input type="text" id="user-search" placeholder="Search users by email..." oninput="filterUsers()" />
+            </div>
+          </div>
+        </header>
+        
+        <div class="user-list" id="user-list-container">
+          {allUsers.map(user => {
+            const userPlaylists = allPlaylists.filter(p => p.user_id === user.id);
+            const isBanned = user.banned_until != null && new Date(user.banned_until) > new Date();
+            const lastLogin = user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never';
+            
+            return (
+              <div class="album-wrapper user-wrapper" data-email={user.email.toLowerCase()} data-joined={new Date(user.created_at).getTime()} data-playlists={userPlaylists.length}>
+                <div class="album-row" style="align-items: flex-start;">
+                  <div class="details" style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <h3 style="margin: 0; font-size: 1.2rem;">{user.email}</h3>
+                      {isBanned ? 
+                        <span style="background: #ef4444; color: #fff; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 800;">BANNED</span> : 
+                        <span style="background: #10b981; color: #fff; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 800;">ACTIVE</span>
+                      }
+                    </div>
+                    <div style="font-size: 0.85rem; color: #888; display: flex; gap: 15px;">
+                      <span><strong>Joined:</strong> {new Date(user.created_at).toLocaleDateString()}</span>
+                      <span><strong>Last Login:</strong> {lastLogin}</span>
+                      <span><strong>Playlists:</strong> {userPlaylists.length}</span>
+                    </div>
+                  </div>
+                  <div class="row-actions" style="margin-top: 5px;">
+                    <button class="btn-view" onclick={`toggleTracks('playlists-${user.id}')`}>View Playlists</button>
+                    <button class="btn-edit" style="background: #fbbf24; color: #000;" onclick={`toggleBanUser('${user.id}', '${user.email}', ${isBanned})`}>
+                      {isBanned ? 'Unban' : 'Ban'}
+                    </button>
+                    <button class="btn-delete" onclick={`deleteUser('${user.id}', '${user.email}')`}>Delete</button>
+                  </div>
+                </div>
+
+                <div id={`playlists-${user.id}`} class="album-tracks-expansion" style="display: none;">
+                  <div class="expansion-header">
+                    <h4>User Playlists</h4>
+                  </div>
+                  {userPlaylists.length === 0 ? (
+                    <div class="empty-tracks">This user hasn't created any playlists.</div>
+                  ) : (
+                    <div class="track-table">
+                      {userPlaylists.map((p, idx) => (
+                        <div class="track-row">
+                          <div class="track-num">{idx + 1}</div>
+                          <div class="track-info">
+                            <span class="track-title">{p.title}</span>
+                          </div>
+                          <div class="track-plays">Created: {new Date(p.created_at).toLocaleDateString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="modal-backdrop">
+    <div class="modal-window">
+      <h2>Edit Album</h2>
+      <input type="hidden" id="edit-album-id" />
+      <div class="input-group"><label>Title</label><input type="text" id="edit-title" /></div>
+      <div class="input-group"><label>Artist</label><input type="text" id="edit-artist" /></div>
+      <div class="input-group">
+        <label>Cover</label>
+        <div class="image-edit"><img id="edit-preview" /><input type="file" onchange="previewEdit(this)" id="edit-cover-file" /></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
+        <button class="btn-submit" onclick="saveEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .admin-layout { display: flex; height: 100vh; background: #000; color: #fff; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    .sidebar { width: 260px; background: #0a0a0a; border-right: 1px solid #1a1a1a; display: flex; flex-direction: column; }
+    .sidebar-header { padding: 30px; font-weight: 900; font-size: 1.2rem; }
+    .sidebar-nav { flex: 1; padding: 10px; }
+    .nav-item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-radius: 10px; background: transparent; border: none; color: #888; cursor: pointer; text-align: left; font-weight: 600; margin-bottom: 5px; }
+    .nav-item.active { background: #1a1a1a; color: #fff; }
+    .sidebar-footer { padding: 20px; border-top: 1px solid #1a1a1a; font-size: 0.8rem; }
+    .sidebar-footer button { background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 0; margin-top: 5px; }
+
+    .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    .tab-header { margin-bottom: 40px; border-bottom: 1px solid #1a1a1a; padding-bottom: 30px; }
+    .header-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .header-info h2 { margin: 0; font-size: 2rem; font-weight: 900; }
+    
+    .stats-overview { display: flex; gap: 30px; }
+    .stat-card { display: flex; flex-direction: column; }
+    .stat-value { font-size: 1.4rem; font-weight: 800; }
+    .stat-label { font-size: 0.7rem; color: #555; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+
+    .header-actions { display: flex; justify-content: space-between; gap: 20px; align-items: center; }
+    .search-bar { flex: 1; }
+    .search-bar input { width: 100%; max-width: 300px; background: #111; border: 1px solid #222; padding: 12px 20px; border-radius: 100px; color: #fff; }
+    .admin-select { background: #111; border: 1px solid #222; padding: 12px 20px; border-radius: 100px; color: #fff; font-family: inherit; font-size: 0.9rem; cursor: pointer; outline: none; }
+    .btn-add { background: #fff; color: #000; text-decoration: none; padding: 12px 25px; border-radius: 100px; font-weight: 800; font-size: 0.9rem; }
+
+    .album-list { display: flex; flex-direction: column; gap: 10px; }
+    .album-wrapper { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 16px; overflow: hidden; transition: 0.2s; }
+    .album-wrapper:hover { border-color: #333; }
+    .album-row { padding: 15px; display: flex; align-items: center; gap: 15px; }
+    .album-row img { width: 55px; height: 55px; border-radius: 8px; object-fit: cover; }
+    .details { flex: 1; }
+    .details h3 { margin: 0; font-size: 1.1rem; }
+    .details p { margin: 0; font-size: 0.85rem; color: #555; }
+    .row-actions { display: flex; gap: 8px; }
+    .btn-view { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+    .btn-edit { background: #fff; border: none; color: #000; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+    .btn-delete { background: transparent; border: 1px solid #222; color: #ef4444; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+
+    .album-tracks-expansion { background: #111; border-top: 1px solid #1a1a1a; padding: 20px; }
+    .expansion-header h4 { margin: 0 0 15px 0; font-size: 1rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; }
+    .track-table { display: flex; flex-direction: column; gap: 8px; }
+    .track-row { display: flex; align-items: center; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; gap: 15px; }
+    .track-num { width: 30px; text-align: center; color: #555; font-weight: 700; font-size: 0.9rem; }
+    .track-info { flex: 1; font-weight: 600; }
+    .track-plays { width: 100px; text-align: right; font-size: 0.85rem; color: #888; }
+    .track-preview { width: 250px; display: flex; justify-content: flex-end; }
+    .admin-audio { height: 32px; max-width: 100%; border-radius: 100px; }
+    .admin-audio::-webkit-media-controls-panel { background-color: #222; }
+    .admin-audio::-webkit-media-controls-current-time-display, .admin-audio::-webkit-media-controls-time-remaining-display { color: #fff; }
+    .empty-tracks { padding: 20px; text-align: center; color: #555; background: rgba(255,255,255,0.02); border-radius: 8px; }
+
+    .analytics-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px; }
+    .analytics-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 25px; border-radius: 20px; }
+    .analytics-card h3 { margin-top: 0; font-size: 1.2rem; margin-bottom: 20px; opacity: 0.6; }
+    
+    .stat-list { display: flex; flex-direction: column; gap: 15px; }
+    .stat-item { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #1a1a1a; }
+    .stat-item-info { display: flex; flex-direction: column; }
+    .track-title { font-weight: 700; font-size: 1rem; }
+    .track-album { font-size: 0.75rem; color: #555; }
+    .play-count { font-size: 1rem; color: #fff; }
+
+    .popular-album { display: flex; gap: 20px; align-items: center; }
+    .popular-album img { width: 100px; height: 100px; border-radius: 12px; }
+    .pop-details h4 { margin: 0; font-size: 1.2rem; }
+    .pop-details p { margin: 5px 0; color: #555; }
+    .pop-plays { font-weight: 800; color: #fff; margin-top: 10px; }
+
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+    .modal-backdrop.active { display: flex; }
+    .modal-window { background: #0a0a0a; border: 1px solid #1a1a1a; width: 450px; padding: 30px; border-radius: 24px; }
+    .input-group { margin-bottom: 20px; }
+    .input-group label { display: block; font-size: 0.8rem; color: #555; margin-bottom: 8px; font-weight: 700; }
+    .input-group input { width: 100%; background: #1a1a1a; border: 1px solid #222; padding: 12px; border-radius: 10px; color: #fff; }
+    .image-edit { display: flex; align-items: center; gap: 15px; }
+    .image-edit img { width: 100px; height: 100px; border-radius: 12px; object-fit: cover; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px; }
+    .btn-submit { background: #fff; border: none; color: #000; padding: 12px 25px; border-radius: 10px; font-weight: 800; cursor: pointer; }
+    .btn-cancel { background: transparent; border: none; color: #555; cursor: pointer; }
+  </style>
+
+  <script is:inline>
+    window.switchTab = (tabId) => {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('tab-' + tabId).classList.add('active');
+      event.currentTarget.classList.add('active');
+    };
+
+    window.filterAlbums = () => {
+      const q = document.getElementById('album-search').value.toLowerCase();
+      document.querySelectorAll('.album-wrapper').forEach(row => {
+        const text = row.getAttribute('data-search-text');
+        row.style.display = text.includes(q) ? 'block' : 'none';
+      });
+    };
+
+    window.sortAlbums = () => {
+      const sortVal = document.getElementById('album-sort').value;
+      const container = document.getElementById('album-list-container');
+      const wrappers = Array.from(container.querySelectorAll('.album-wrapper'));
+
+      wrappers.sort((a, b) => {
+        if (sortVal === 'az') {
+          return a.getAttribute('data-title').localeCompare(b.getAttribute('data-title'));
+        } else if (sortVal === 'plays') {
+          return parseInt(b.getAttribute('data-plays')) - parseInt(a.getAttribute('data-plays'));
+        } else {
+          // default (ID / Order) - assuming data-id contains the original sortable ID
+          return a.getAttribute('data-id').localeCompare(b.getAttribute('data-id'));
+        }
+      });
+
+      wrappers.forEach(w => container.appendChild(w));
+    };
+
+    window.toggleTracks = (tracksId) => {
+      const el = document.getElementById(tracksId);
+      if (el.style.display === 'none') {
+        el.style.display = 'block';
+        // Pause other audios when expanding a new one
+        document.querySelectorAll('.admin-audio').forEach(a => a.pause());
+      } else {
+        el.style.display = 'none';
+        // Pause all audios inside this expansion
+        el.querySelectorAll('.admin-audio').forEach(a => a.pause());
+      }
+    };
+
+    async function optimizeImage(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 400; canvas.height = 400;
+            const ctx = canvas.getContext('2d');
+            const min = Math.min(img.width, img.height);
+            ctx.drawImage(img, (img.width-min)/2, (img.height-min)/2, min, min, 0, 0, 400, 400);
+            canvas.toBlob((blob) => resolve(blob), 'image/webp', 0.82);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    window.openEdit = (id, title, artist, cover) => {
+      document.getElementById('edit-album-id').value = id;
+      document.getElementById('edit-title').value = title;
+      document.getElementById('edit-artist').value = artist;
+      document.getElementById('edit-preview').src = cover;
+      document.getElementById('edit-modal').classList.add('active');
+    };
+
+    window.closeEdit = () => document.getElementById('edit-modal').classList.remove('active');
+
+    window.previewEdit = (input) => {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => document.getElementById('edit-preview').src = e.target.result;
+        reader.readAsDataURL(input.files[0]);
+      }
+    };
+
+    window.saveEdit = async function() {
+      const id = document.getElementById('edit-album-id').value;
+      const t = document.getElementById('edit-title').value;
+      const a = document.getElementById('edit-artist').value;
+      const file = document.getElementById('edit-cover-file').files[0];
+      const btn = document.querySelector('.btn-submit');
+      btn.textContent = 'Saving...'; btn.disabled = true;
+
+      let coverUrl = null;
+      if (file) {
+        try {
+          const blob = await optimizeImage(file);
+          const fname = `album-${id.replace('album-','')}-${Date.now()}.webp`;
+          const up = await fetch(`${window.SUPABASE_URL}/storage/v1/object/thumbnails/${fname}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${window.SESSION_TOKEN}`, 'apikey': window.SUPABASE_ANON_KEY, 'Content-Type': 'image/webp' },
+            body: blob
+          });
+          if (up.ok) coverUrl = `${window.SUPABASE_URL}/storage/v1/object/public/thumbnails/${fname}`;
+        } catch (e) { alert(e.message); btn.disabled = false; return; }
+      }
+
+      const res = await fetch('/api/admin/edit-album', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ albumId: id, title: t, artist: a, coverUrl })
+      });
+      if (res.ok) location.reload(); else { alert("Error saving"); btn.disabled = false; }
+    };
+
+    window.delAlbum = async (id, title, e) => {
+      if (!confirm(`Delete "${title}"?`)) return;
+      const res = await fetch('/api/admin/delete-album', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ albumId: id })
+      });
+      if (res.ok) location.reload();
+    };
+
+    window.filterUsers = () => {
+      const q = document.getElementById('user-search').value.toLowerCase();
+      document.querySelectorAll('.user-wrapper').forEach(row => {
+        const text = row.getAttribute('data-email');
+        row.style.display = text.includes(q) ? 'block' : 'none';
+      });
+    };
+
+    window.sortUsers = () => {
+      const sortVal = document.getElementById('user-sort').value;
+      const container = document.getElementById('user-list-container');
+      const wrappers = Array.from(container.querySelectorAll('.user-wrapper'));
+
+      wrappers.sort((a, b) => {
+        if (sortVal === 'oldest') {
+          return parseInt(a.getAttribute('data-joined')) - parseInt(b.getAttribute('data-joined'));
+        } else if (sortVal === 'playlists') {
+          return parseInt(b.getAttribute('data-playlists')) - parseInt(a.getAttribute('data-playlists'));
+        } else {
+          // default (newest)
+          return parseInt(b.getAttribute('data-joined')) - parseInt(a.getAttribute('data-joined'));
+        }
+      });
+
+      wrappers.forEach(w => container.appendChild(w));
+    };
+
+    window.toggleBanUser = async (id, email, isBanned) => {
+      const action = isBanned ? 'Unban' : 'Ban';
+      if (!confirm(`Are you sure you want to ${action} user "${email}"?`)) return;
+      
+      const res = await fetch('/api/admin/ban-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id, isBanned: isBanned })
+      });
+      if (res.ok) location.reload();
+      else alert(`Failed to ${action} user.`);
+    };
+
+    window.deleteUser = async (id, email) => {
+      if (!confirm(`CRITICAL WARNING: Are you sure you want to PERMANENTLY DELETE user "${email}"? This action cannot be undone.`)) return;
+      
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id })
+      });
+      if (res.ok) location.reload();
+      else alert(`Failed to delete user.`);
+    };
+  </script>
+</AdminLayout>

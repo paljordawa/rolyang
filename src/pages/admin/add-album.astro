@@ -1,0 +1,456 @@
+---
+import { createSupabaseServerClient } from '../../lib/supabaseServer';
+
+const supabase = createSupabaseServerClient(Astro);
+const { data: { user } } = await supabase.auth.getUser();
+
+if (!user || user.email !== 'paljordawa@gmail.com') {
+  return Astro.redirect('/admin/login');
+}
+
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Album — Rolyang Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #0a0a0f; color: #fff; min-height: 100vh; }
+
+    .header {
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header a { font-size: 13px; color: rgba(255,255,255,0.4); text-decoration: none; }
+    .header a:hover { color: white; }
+    .header h1 { font-size: 20px; font-weight: 700; }
+
+    .container { max-width: 760px; margin: 0 auto; padding: 40px 24px 100px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.7); }
+    label span { color: rgba(255,255,255,0.3); font-weight: 400; }
+    input[type="text"] {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 14px;
+      color: #fff;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+    input[type="text"]:focus { outline: none; border-color: #6366f1; }
+    input[type="text"]::placeholder { color: rgba(255,255,255,0.2); }
+
+    /* Upload Zones */
+    .upload-zone {
+      border: 2px dashed rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 32px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: #6366f1;
+      background: rgba(99,102,241,0.05);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .upload-icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-label { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .upload-hint { font-size: 12px; color: rgba(255,255,255,0.35); }
+
+    /* Cover preview */
+    #cover-preview-wrap { display: none; }
+    #cover-preview-wrap img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin: 0 auto 8px;
+      display: block;
+      border: 2px solid rgba(99,102,241,0.5);
+    }
+
+    /* Track list */
+    #track-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .track-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    .track-row .num { color: rgba(255,255,255,0.3); font-size: 13px; width: 20px; flex-shrink: 0; }
+    .track-row .track-title-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+      min-width: 0;
+    }
+    .track-row .track-title-input:focus { outline: none; }
+    .track-row .file-name { font-size: 11px; color: rgba(255,255,255,0.25); flex-shrink: 0; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .drag-handle { cursor: grab; color: rgba(255,255,255,0.2); font-size: 16px; flex-shrink: 0; }
+
+    /* Progress */
+    #progress-wrap {
+      display: none;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 24px;
+    }
+    #progress-label { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+    #progress-bar-bg { background: rgba(255,255,255,0.08); border-radius: 99px; height: 6px; overflow: hidden; }
+    #progress-bar { height: 100%; background: linear-gradient(90deg, #6366f1, #a78bfa); border-radius: 99px; transition: width 0.3s; width: 0%; }
+    #progress-steps { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+    .step { font-size: 13px; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 8px; }
+    .step.done { color: #4ade80; }
+    .step.active { color: white; }
+
+    /* Submit */
+    .submit-row { display: flex; align-items: center; gap: 16px; margin-top: 32px; }
+    #submit-btn {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 13px 32px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    #submit-btn:hover { opacity: 0.9; }
+    #submit-btn:active { transform: scale(0.98); }
+    #submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #error-msg { color: #f87171; font-size: 13px; display: none; }
+    #success-msg { color: #4ade80; font-size: 14px; font-weight: 600; display: none; }
+
+    section { margin-bottom: 32px; }
+    section h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <a href="/admin">← Admin</a>
+  <h1>Add New Album</h1>
+</header>
+
+<main class="container">
+
+  <!-- Album Details -->
+  <section>
+    <h2>Album Details</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="album-title">Title</label>
+        <input type="text" id="album-title" placeholder="e.g. Night Sessions" />
+      </div>
+      <div class="form-group">
+        <label for="album-artist">Artist</label>
+        <input type="text" id="album-artist" placeholder="e.g. Kygo" />
+      </div>
+      <div class="form-group full">
+        <label for="album-id">Album ID <span>(auto-generated, must be unique)</span></label>
+        <input type="text" id="album-id" placeholder="e.g. album-4" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Cover Image -->
+  <section>
+    <h2>Cover Image</h2>
+    <div class="upload-zone" id="cover-zone">
+      <input type="file" id="cover-file" accept="image/*" />
+      <div id="cover-upload-ui">
+        <div class="upload-icon">🖼️</div>
+        <div class="upload-label">Click or drag cover image</div>
+        <div class="upload-hint">JPG, PNG, WebP — any size (will be cropped to 400×400)</div>
+      </div>
+      <div id="cover-preview-wrap">
+        <img id="cover-preview" src="" alt="Cover preview" />
+        <div style="font-size:13px;color:rgba(255,255,255,0.5)">Click to change</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Audio Tracks -->
+  <section>
+    <h2>Audio Tracks</h2>
+    <div class="upload-zone" id="audio-zone">
+      <input type="file" id="audio-files" accept="audio/*" multiple />
+      <div class="upload-icon">🎵</div>
+      <div class="upload-label">Click or drag audio files</div>
+      <div class="upload-hint">MP3, AAC (.m4a), WAV — select multiple files at once</div>
+    </div>
+    <div id="track-list"></div>
+  </section>
+
+  <!-- Progress -->
+  <div id="progress-wrap">
+    <div id="progress-label">Uploading...</div>
+    <div id="progress-bar-bg"><div id="progress-bar"></div></div>
+    <div id="progress-steps"></div>
+  </div>
+
+  <!-- Submit -->
+  <div class="submit-row">
+    <button id="submit-btn" onclick="submitAlbum()">🚀 Publish Album</button>
+    <span id="error-msg"></span>
+    <span id="success-msg"></span>
+  </div>
+
+</main>
+
+<script define:vars={{ SUPABASE_URL, SUPABASE_ANON_KEY }}>
+  // ── State ────────────────────────────────────────────────────────────────
+  let selectedAudioFiles = []; // { file, title, order }
+
+  // ── Album ID Auto-generation ─────────────────────────────────────────────
+  document.getElementById('album-title').addEventListener('input', function() {
+    const id = 'album-' + this.value.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .substring(0, 20);
+    document.getElementById('album-id').value = id;
+  });
+
+  // ── Cover Image Preview ───────────────────────────────────────────────────
+  document.getElementById('cover-file').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    document.getElementById('cover-preview').src = url;
+    document.getElementById('cover-upload-ui').style.display = 'none';
+    document.getElementById('cover-preview-wrap').style.display = 'block';
+  });
+
+  // ── Audio File Selection ──────────────────────────────────────────────────
+  document.getElementById('audio-files').addEventListener('change', function() {
+    const files = Array.from(this.files).sort((a, b) => a.name.localeCompare(b.name));
+    selectedAudioFiles = files.map((file, i) => ({
+      file,
+      title: deriveTitle(file.name),
+      order: i
+    }));
+    renderTrackList();
+  });
+
+  function deriveTitle(filename) {
+    return filename
+      .replace(/\.[^.]+$/, '')          // remove extension
+      .replace(/^[\d\s.\-_]+/, '')      // remove leading numbers/dashes
+      .replace(/[^\x20-\x7E]/g, '')     // remove non-ASCII
+      .trim();
+  }
+
+  function renderTrackList() {
+    const list = document.getElementById('track-list');
+    list.innerHTML = selectedAudioFiles.map((t, i) => `
+      <div class="track-row" data-index="${i}">
+        <span class="drag-handle">⠿</span>
+        <span class="num">${i + 1}</span>
+        <input
+          class="track-title-input"
+          type="text"
+          value="${t.title.replace(/"/g, '&quot;')}"
+          placeholder="Track title"
+          oninput="updateTitle(${i}, this.value)"
+        />
+        <span class="file-name">${t.file.name}</span>
+      </div>
+    `).join('');
+  }
+
+  function updateTitle(index, value) {
+    selectedAudioFiles[index].title = value;
+  }
+
+  // ── Supabase Storage Upload ───────────────────────────────────────────────
+  async function uploadToStorage(bucket, filename, file, mimeType, accessToken) {
+    const res = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeURIComponent(filename)}`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': mimeType,
+          'x-upsert': 'true'
+        },
+        body: file
+      }
+    );
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || `Upload failed: ${res.status}`);
+    }
+    return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${encodeURIComponent(filename)}`;
+  }
+
+  // ── Progress UI ───────────────────────────────────────────────────────────
+  let stepEls = [];
+
+  function showProgress(steps) {
+    const wrap = document.getElementById('progress-wrap');
+    const stepsDiv = document.getElementById('progress-steps');
+    wrap.style.display = 'block';
+    stepEls = steps.map((label, i) => {
+      const el = document.createElement('div');
+      el.className = 'step';
+      el.innerHTML = `<span>○</span> ${label}`;
+      stepsDiv.appendChild(el);
+      return el;
+    });
+    setProgress(0);
+  }
+
+  function setStep(i, status) {
+    if (!stepEls[i]) return;
+    const icons = { done: '✓', active: '●', pending: '○' };
+    const classes = { done: 'done', active: 'active', pending: '' };
+    stepEls[i].className = 'step ' + (classes[status] || '');
+    stepEls[i].querySelector('span').textContent = icons[status] || '○';
+  }
+
+  function setProgress(pct) {
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-label').textContent = Math.round(pct) + '% complete';
+  }
+
+  // ── Main Submit ───────────────────────────────────────────────────────────
+  async function submitAlbum() {
+    const albumId = document.getElementById('album-id').value.trim();
+    const title   = document.getElementById('album-title').value.trim();
+    const artist  = document.getElementById('album-artist').value.trim();
+    const coverFile = document.getElementById('cover-file').files[0];
+
+    // Validate
+    if (!albumId || !title || !artist) { showError('Please fill in all album details.'); return; }
+    if (!coverFile) { showError('Please select a cover image.'); return; }
+    if (selectedAudioFiles.length === 0) { showError('Please select at least one audio track.'); return; }
+    if (selectedAudioFiles.some(t => !t.title.trim())) { showError('Please fill in all track titles.'); return; }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    hideError();
+
+    // Get Supabase auth token
+    const { createBrowserClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/ssr@latest/+esm');
+    const client = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: { session } } = await client.auth.getSession();
+    if (!session) { showError('Not authenticated. Please log in.'); btn.disabled = false; return; }
+    const token = session.access_token;
+
+    // Setup progress
+    const steps = [
+      'Uploading cover image',
+      ...selectedAudioFiles.map((t, i) => `Uploading track ${i + 1}: ${t.title}`),
+      'Saving to database'
+    ];
+    showProgress(steps);
+    const total = steps.length;
+
+    try {
+      // Step 0: Upload cover
+      setStep(0, 'active');
+      const coverExt = coverFile.name.split('.').pop().toLowerCase();
+      const coverStorageName = `${albumId}-cover.${coverExt}`;
+      const coverUrl = await uploadToStorage('thumbnails', coverStorageName, coverFile, coverFile.type, token);
+      setStep(0, 'done');
+      setProgress((1 / total) * 100);
+
+      // Steps 1..N: Upload audio tracks
+      const trackUrls = [];
+      for (let i = 0; i < selectedAudioFiles.length; i++) {
+        setStep(i + 1, 'active');
+        const { file, title: trackTitle } = selectedAudioFiles[i];
+        const cleanName = trackTitle.replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, '-');
+        const audioStorageName = `${albumId}-track-${String(i + 1).padStart(2, '0')}-${cleanName}${file.name.match(/\.[^.]+$/)[0]}`;
+        const audioUrl = await uploadToStorage('audio', audioStorageName, file, file.type || 'audio/mpeg', token);
+        trackUrls.push(audioUrl);
+        setStep(i + 1, 'done');
+        setProgress(((i + 2) / total) * 100);
+      }
+
+      // Final step: Insert into DB
+      setStep(total - 1, 'active');
+      const res = await fetch('/api/admin/add-album', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          albumId,
+          title,
+          artist,
+          coverUrl,
+          tracks: selectedAudioFiles.map((t, i) => ({
+            id: `${albumId}-t${i + 1}`,
+            title: t.title,
+            audioUrl: trackUrls[i]
+          }))
+        })
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Database insert failed');
+
+      setStep(total - 1, 'done');
+      setProgress(100);
+
+      document.getElementById('success-msg').style.display = 'inline';
+      document.getElementById('success-msg').textContent = `✅ "${title}" published! Redirecting...`;
+      setTimeout(() => { window.location.href = `/album/${albumId}`; }, 1500);
+
+    } catch (err) {
+      showError(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = '❌ ' + msg;
+    el.style.display = 'inline';
+  }
+
+  function hideError() {
+    document.getElementById('error-msg').style.display = 'none';
+  }
+</script>
+
+</body>
+</html>
