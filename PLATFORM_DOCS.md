@@ -1,129 +1,234 @@
-# Audiobook Platform Architecture & Roadmap
+# Rolyang Music Platform — Architecture & Operations Guide
 
-This document outlines the current architectural decisions for the Audiobook platform and details the roadmap required to scale it into a production-level standard audio streaming platform (similar to Spotify or Apple Music).
+This document outlines all architectural decisions, infrastructure configuration, and operational procedures for the Rolyang music streaming platform.
+
+---
 
 ## 1. Technical Foundation: Astro + Unified Audio + View Transitions
 
 ### Why Astro?
 
-Astro is primarily designed for generating static websites or Multi-Page Applications (MPAs). Historically, MPAs are completely incompatible with music streaming platforms because navigating to a new page forces the browser to refresh, which immediately kills playback.
+Astro is primarily designed for Multi-Page Applications (MPAs). Historically, MPAs are incompatible with music platforms because navigating to a new page kills playback. We solve this with **Astro View Transitions** and **Persistent Islands**.
 
-### The Solution: View Transitions & Persistent Islands
+### Continuous Playback Architecture
 
-Despite using Astro, this platform achieves uninterrupted, continuous audio playback using **Astro View Transitions**.
-By enabling View Transitions (`<ViewTransitions />` in `Layout.astro`):
+- Astro intercepts all link clicks and replaces the DOM without a full page reload.
+- The `<Player client:load />` island is marked with `transition:persist`, surviving all DOM swaps untouched.
+- Client-side scripts are initialized on every `astro:page-load` event via `src/scripts/main.js`.
 
-- Astro intercepts all link clicks natively and replaces the DOM without a full page reload.
-- **The Magic:** The `<Player client:load />` island is marked with `transition:persist`, ensuring it survives DOM swaps untouched.
+### The Engine: Unified Audio Service (`src/lib/audioService.js`)
 
-### The Engine: Unified Audio Service (`audioService.js`)
+An abstracted engine supporting both web and native playback:
 
-We have migrated to an abstracted engine in `src/lib/audioService.js` that enables seamless switching between platforms:
+- **Web (Howler.js):** `html5: true` enables native browser range-request streaming. Audio starts playing within ~0.5s even for large files.
+- **Native (Capacitor):** Uses `capacitor-music-controls-plugin` for OS lock-screen controls and hardware key support.
+- **Unified API:** Both engines share a single interface (`load`, `play`, `pause`, `seek`, `setVolume`).
 
-- **Web (Howler.js):** Maintains the high reliability of Howler for browser-based streaming.
-- **Native (Capacitor):** Pre-configured to use native plugins (Capawesome or Community Music Controls) for system-level background audio performance.
-- **Unified API:** Both engines share a single interface for load, play, pause, and seek, controlled by React components and Nanostores.
-
----
-
-## 2. State Management & Highlighting (Nanostores)
-
-Because the project relies on Astro's "Islands Architecture," we use **[Nanostores](https://github.com/nanostores/nanostores)** for ultra-fast, framework-agnostic state management.
-
-### Universal Song Highlighting System
-
-A core challenge of music platforms is keeping the UI synchronized as the user navigates between different playlists that contain the same songs. We solve this with a multi-layered approach:
-
-1. **Global Store:** The `$currentTrack` Nanostore holds the `trackId`, `title`, and `artist`.
-2. **Meta-Matching Logic:** Every track row in the application carries data attributes (`data-track-id`, `data-track-title`, `data-artist-name`). 
-3. **Navigation Sync:** On every `astro:page-load`, a global observer scans the new page's tracks and highlights the currently playing song using a tiered match:
-    - Match by unique `trackId`.
-    - Fallback: Match by **Title + Artist** (ensures highlighting works across custom playlists where IDs might differ).
+> [!IMPORTANT]
+> Capacitor support is permanent and will never be dropped. Do NOT introduce audio formats (e.g., Opus) that are unsupported in iOS/Android WebView.
 
 ---
 
-## 3. Mobile Development Roadmap (Capacitor)
+## 2. Infrastructure & Backend
 
-### A. Media Session & Native Controls
+### Database: Supabase (PostgreSQL)
 
-Integrating `navigator.mediaSession` (Web) and **Capacitor Music Controls** (Native) to ensure the OS lock screen displays metadata and responds to hardware keys (Next/Prev/Play/Pause). 
+- **Project URL:** `https://qmmawqxonyyyzphfnemd.supabase.co`
+- **Auth:** Supabase SSR via `@supabase/ssr`. Server client in `src/lib/supabaseServer.js`.
+- **Client:** Browser client in `src/lib/supabase.js`.
+- **Environment Variables Required:**
+  ```
+  PUBLIC_SUPABASE_URL=https://qmmawqxonyyyzphfnemd.supabase.co
+  PUBLIC_SUPABASE_ANON_KEY=<anon key>
+  SUPABASE_SERVICE_ROLE_KEY=<service role key — never commit to Git>
+  ```
 
-### B. Background Audio Strategy
+### Schema Overview
 
-To ensure audio keeps playing when the app is minimized:
-
-- **Android:** Implement a Foreground Service via native plugins.
-- **iOS:** Enable "Audio, AirPlay, and Picture in Picture" background modes in Xcode.
-
-### C. HLS Streaming (M3U8)
-
-(Future) Implement `hls.js` or native HLS support for large files to enable instant playback and adaptive quality.
-
----
-
-## 4. App Development Key Workflow
-
-### Phase 1: Foundation & Capacitor wrapper
-
-- **Capacitor Setup:** Project wrapped with `@capacitor/core` and `@capacitor/cli`.
-- **Build Target:** Astro builds to `dist/`, which serves as the Capacitor `webDir`.
-
-### Phase 2: Data & Backend
-
-- **Supabase:** Migrating to Postgres on the edge for 'Liked Songs', 'Followed Artists', and User Authentication.
+| Table | Key Columns |
+|---|---|
+| `albums` | `id`, `title`, `artist`, `cover` (Supabase Storage URL) |
+| `tracks` | `id`, `album_id`, `title`, `audio` (Supabase Storage URL), `duration`, `play_count` |
+| `playlists` | `id`, `user_id`, `title`, `description`, `cover` |
+| `playlist_tracks` | `playlist_id`, `track_id`, `added_at` |
+| `liked_tracks` | `user_id`, `track_id` |
+| `followed_artists` | `user_id`, `artist_name` |
 
 > [!WARNING]
-> **Supabase Migration:** When migrating from local environments or other systems, ensure the Supabase SQL schema (previously in `supabase_schema.sql`) has been applied to the production project first. Use migration scripts if you need to move data from legacy SQLite `local.db` files. NEVER commit sensitive Supabase Service Role keys to Git.
+> NEVER commit the `SUPABASE_SERVICE_ROLE_KEY` to Git. It has full database bypass access.
 
-### Phase 3: Persistent State (Nanostores)
+### Media Storage: Supabase Storage (CDN)
 
-- **Shared State:** Use Nanostores to bridge the gap between Astro's static HTML and the dynamic React Player island.
+All media files are stored in Supabase Storage and served via Cloudflare-backed CDN. **Do NOT store media files in `public/`** — they would bloat every Netlify deployment.
 
-### Phase 4: Core Player Features (Unified Service)
+| Bucket | Contents | Visibility |
+|---|---|---|
+| `audio` | AAC audio tracks (`.m4a`) | Public |
+| `thumbnails` | WebP album covers (`.webp`) | Public |
 
-- **Audio Controller:** Use `audioService.js` to manage engine switching (Web Howler vs Native Plugin).
-- **Metadata Propagation:** Centralized Media Session updates for lock-screen persistence.
+**URL format:**
+```
+https://qmmawqxonyyyzphfnemd.supabase.co/storage/v1/object/public/{bucket}/{filename}
+```
 
-### Phase 5: UI & Discovery
+### Audio Format: AAC (.m4a)
 
-- **Optimistic UI:** Update Heart icons and follow buttons instantly via Nanostores.
-- **Safe Area Design:** Ensure player UI respects iPhone notches and Home indicators.
+All audio is encoded as **AAC at 128kbps** using ffmpeg with `-movflags +faststart` for optimal web streaming (metadata at file start).
 
-### Phase 6: Optimization & Launch
+```bash
+ffmpeg -i input.mp3 -vn -c:a aac -b:a 128k -movflags +faststart output.m4a
+```
 
-- **Native Deployment:** Automated sync via `npx cap copy` and testing on physical iOS/Android devices.
-- **Skeleton Loaders:** Enhanced perceived performance during track transitions.
+- `-vn` strips any embedded video streams (some MP3s contain album art as H.264)
+- `-movflags +faststart` moves the moov atom to the file start — audio begins immediately without waiting for full download
+- AAC is ~20% smaller than MP3 at equivalent quality and is natively supported across all browsers, iOS, and Android WebView
+
+### Image Format: WebP
+
+All album cover images are stored as **WebP at quality 82, 400×400px** (2× retina for max 200px display size).
+
+```bash
+# Using sharp (already installed via Astro)
+node scripts/compress-images.mjs
+```
 
 ---
 
-## 5. Mobile Build & Sync Process
+## 3. Deployment: Netlify
 
-To deploy the current web state to a physical device or emulator, follow these steps:
+- **Adapter:** `@astrojs/netlify`
+- **Output mode:** `server` (SSR)
+- **Build command:** `npm run build`
+- **Package manager:** `npm` (not pnpm — pnpm caused symlink issues on Netlify)
 
-### 1. Build the Astro Project
+### OAuth Redirect Configuration (Required for Production)
 
-Astro must generate the static production build in the `dist/` directory first.
+In the **Supabase Dashboard → Authentication → URL Configuration**:
+- **Site URL:** `https://rolyang.netlify.app`
+- **Redirect URLs:** Add `https://rolyang.netlify.app/auth/callback`
 
-```bash
-pnpm run build
+> [!CAUTION]
+> Without the correct redirect URL whitelist, Facebook/Google OAuth login will redirect to `localhost` instead of production.
+
+---
+
+## 4. State Management (Nanostores)
+
+Because the project uses Astro's Islands Architecture, **[Nanostores](https://github.com/nanostores/nanostores)** provides ultra-fast, framework-agnostic shared state.
+
+### Stores (`src/store/playerStore.js`)
+
+| Store | Type | Purpose |
+|---|---|---|
+| `$isPlaying` | `atom(false)` | Global play/pause state |
+| `$currentTrack` | `atom({bookId, chapIndex, trackId, title, artist})` | Currently playing track |
+| `$likedTracks` | `map({})` | `"albumId:chapId"` → boolean |
+| `$followedArtists` | `map({})` | `"artistName"` → boolean |
+
+### Track Highlighting System
+
+Every track row carries `data-track-id`. The `updateRows()` function in `main.js` highlights by **exact `trackId` match only**:
+
+```js
+const isCurrent = String(row.dataset.trackId) === String(track.trackId);
 ```
 
-### 2. Sync to Capacitor
+This ensures the correct track is highlighted across all pages (album, playlist, artist) regardless of context.
 
-Update the native Android/iOS folders with the latest code and plugins.
+> [!NOTE]
+> The Player.jsx store-sync effect is guarded with `if (!currentTrack.bookId) return`. This prevents the default first track (index 0 of album 0) from being written into the store on mount before any user action.
+
+---
+
+## 5. Performance Optimizations
+
+### Server-Side
+- **Parallelized fetching:** All Supabase queries use `Promise.all()` in Layout.astro, index.astro, and album/[id].astro to eliminate sequential waterfall.
+- **Null-safe rendering:** All Supabase results use `|| []` coalescing (never destructuring defaults, which don't handle `null`).
+- **Search:** Batch-fetches track indices to eliminate N+1 query pattern.
+
+### Client-Side
+- **Script consolidation:** All inline JS extracted to `src/scripts/main.js` (modular, tree-shakeable).
+- **Library data injection:** `window.__libraryData` and `window.__userPlaylists` injected via inline `<script>` in Layout.astro sidebar, so data is available synchronously to all page scripts.
+
+### Media
+- **Images:** WebP, 400×400px, quality 82 (~90% smaller than original JPGs)
+- **Audio:** AAC 128kbps with `+faststart` (browser streams progressively, not fully downloaded)
+- **CDN:** Supabase Storage backed by Cloudflare — global edge delivery
+
+---
+
+## 6. Client-Side Scripts (`src/scripts/main.js`)
+
+All global UI behaviors are initialized in `initApp()`, called on every `astro:page-load`:
+
+| Function | Purpose |
+|---|---|
+| `setupPlayerClickHandler` | Intercepts row/card clicks → dispatches `player:play` |
+| `setupProfileDropdown` | Profile menu toggle + logout |
+| `setupHeaderScroll` | Frosted glass header on scroll |
+| `setupPlayerReveal` | Shows player shell when playback starts |
+| `setupBottomNavVisibility` | Hides bottom nav when player is expanded (mobile) |
+| `setupLikeLogic` | Heart button toggle + DB sync |
+| `setupFollowLogic` | Follow button toggle + DB sync |
+| `setupPlaylistGlobalLogic` | Create/edit/delete playlist modal |
+| `setupTrackContextMenu` | Track "..." context menu |
+| `setupTrackHighlighting` | Subscribes to `$currentTrack` → calls `updateRows()` |
+| `renderLibrary` | Renders sidebar library list (Albums/Playlists/Artists tabs) |
+
+---
+
+## 7. Mobile Development (Capacitor)
+
+### Build & Sync Process
 
 ```bash
+# 1. Build Astro to dist/
+npm run build
+
+# 2. Sync to native folders
 npx cap sync
-```
 
-### 3. Open Native IDEs
-
-Open the project in Android Studio or Xcode to compile and run on a device.
-
-```bash
+# 3. Open in IDE
 npx cap open android
 npx cap open ios
 ```
 
 > [!TIP]
-> Ensure your `capacitor.config.ts` has `webDir: 'dist'` to match Astro's default output.
+> Ensure `capacitor.config.ts` has `webDir: 'dist'`.
+
+### Background Audio
+
+- **Android:** Foreground Service via `capacitor-music-controls-plugin`
+- **iOS:** Enable "Audio, AirPlay, and Picture in Picture" background modes in Xcode
+
+### Media Session (Lock Screen)
+
+`audioService.js` calls `navigator.mediaSession` on web and `MusicControls.create()` on native, propagating track title, artist, album, and artwork to the OS.
+
+---
+
+## 8. Utility Scripts (`scripts/`)
+
+| Script | Purpose |
+|---|---|
+| `compress-images.mjs` | Converts JPG/PNG thumbnails → WebP (400px, q82) using sharp |
+| `convert-to-aac.mjs` | Batch-converts MP3/WAV → AAC .m4a using ffmpeg |
+| `migrate-to-supabase-storage.mjs` | Uploads audio + thumbnails to Supabase Storage, updates DB URLs |
+| `update-cover-urls.mjs` | Updates album cover URLs in DB (one-off, post-migration) |
+
+Run scripts with env vars:
+```bash
+$env:PUBLIC_SUPABASE_URL="..."; $env:SUPABASE_SERVICE_ROLE_KEY="..."; node scripts/<script>.mjs
+```
+
+---
+
+## 9. Environment Setup (Local Development)
+
+1. Copy `.env.example` to `.env`
+2. Fill in `PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY` from Supabase Dashboard → Project Settings → API
+3. Run `npm install` then `npm run dev`
+
+> [!NOTE]
+> The app requires authentication — you must log in before seeing any content. Use Facebook or email/password OAuth configured in your Supabase project.

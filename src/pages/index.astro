@@ -71,9 +71,9 @@ else if (time < 18) greeting = 'Good afternoon';
       {albums.length === 0 ? (
       <SkeletonAlbum count={6} />
     ) : (
-      <div class="flex overflow-x-auto gap-5 pb-6 no-scrollbar -mx-4 px-4 snap-x">
+      <div class="flex overflow-x-auto gap-3 pb-6 no-scrollbar -mx-4 px-4 snap-x">
         {albums.map((album) => (
-          <div class="w-44 md:w-52 shrink-0 snap-start">
+          <div class="w-32 md:w-40 shrink-0 snap-start">
             <AlbumCard 
               id={album.id as string} 
               title={album.title as string} 
