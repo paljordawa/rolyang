@@ -1,19 +1,22 @@
-import { createSupabaseServerClient } from '../../../lib/supabaseServer';
+import { createSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 
-export const POST = async (context) => {
-  try {
-    const supabase = createSupabaseServerClient(context);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.email !== 'paljordawa@gmail.com') return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+export async function POST({ request }) {
+  const { trackId, title, genre, genre2 } = await request.json();
+  const supabase = createSupabaseAdminClient();
 
-    const { trackId, title } = await context.request.json();
-    if (!trackId || !title) return new Response(JSON.stringify({ error: 'trackId and title required' }), { status: 400 });
-
-    const { error } = await supabase.from('tracks').update({ title }).eq('id', trackId);
-    if (error) throw error;
-
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  if (!trackId || !title) {
+    return new Response(JSON.stringify({ error: 'Missing fields' }), { status: 400 });
   }
-};
+
+  const { error } = await supabase
+    .from('tracks')
+    .update({ title, genre: genre || 'General', genre2: genre2 || null })
+    .eq('id', trackId);
+
+  if (error) {
+    console.error('Error updating track:', error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
+
+  return new Response(JSON.stringify({ success: true }), { status: 200 });
+}

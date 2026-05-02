@@ -1,27 +1,30 @@
-import { createSupabaseServerClient } from '../../../lib/supabaseServer';
+import { createSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 
-export const POST = async (context) => {
-  try {
-    const supabase = createSupabaseServerClient(context);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.email !== 'paljordawa@gmail.com') return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+export async function POST({ request }) {
+  const { albumId, title, genre, audioUrl } = await request.json();
+  const supabase = createSupabaseAdminClient();
 
-    const { albumId, trackId, title, audioUrl } = await context.request.json();
-    if (!albumId || !trackId || !title || !audioUrl) {
-      return new Response(JSON.stringify({ error: 'albumId, trackId, title, audioUrl all required' }), { status: 400 });
-    }
-
-    const { error } = await supabase.from('tracks').insert({
-      id:        trackId,
-      album_id:  albumId,
-      title,
-      audio:     audioUrl,
-      play_count: 0,
-    });
-    if (error) throw error;
-
-    return new Response(JSON.stringify({ success: true }), { status: 201, headers: { 'Content-Type': 'application/json' } });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  if (!albumId || !title || !audioUrl) {
+    return new Response(JSON.stringify({ error: 'Missing fields' }), { status: 400 });
   }
-};
+
+  // Generate a unique track ID
+  const trackId = `${albumId}-t${Date.now()}`;
+
+  const { error } = await supabase.from('tracks').insert({
+    id: trackId,
+    album_id: albumId,
+    title: title,
+    genre: genre || 'General',
+    genre2: genre2 || null,
+    audio: audioUrl,
+    play_count: 0
+  });
+
+  if (error) {
+    console.error('Error adding track:', error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
+
+  return new Response(JSON.stringify({ success: true, trackId }), { status: 200 });
+}

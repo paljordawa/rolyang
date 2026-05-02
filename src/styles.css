@@ -1,8 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #6366f1;
+  --color-brand-secondary: #a855f7;
+  --color-brand-accent: #c084fc;
+
+  --color-surface-base: #0a0b10;
+  --color-surface-panel: #15171e;
+  --color-surface-glass: rgba(255, 255, 255, 0.03);
+
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+}
 
 html, body, #app { 
   height: 100%; 

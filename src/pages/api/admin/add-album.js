@@ -1,12 +1,13 @@
-import { createSupabaseServerClient } from '../../../lib/supabaseServer';
+import { createSupabaseServerClient, createAdminClient } from '../../../lib/supabaseServer';
 
 export const POST = async (context) => {
   try {
     const supabase = createSupabaseServerClient(context);
+    const admin = createAdminClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || user.email !== 'paljordawa@gmail.com') return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
-    const { albumId, title, artist, coverUrl, tracks } = await context.request.json();
+    const { albumId, title, artist, publishYear, coverUrl, tracks } = await context.request.json();
 
     // Validate
     if (!albumId || !title || !artist || !coverUrl || !Array.isArray(tracks) || tracks.length === 0) {
@@ -14,16 +15,17 @@ export const POST = async (context) => {
     }
 
     // Check album ID is unique
-    const { data: existing } = await supabase.from('albums').select('id').eq('id', albumId).single();
+    const { data: existing } = await admin.from('albums').select('id').eq('id', albumId).single();
     if (existing) {
       return new Response(JSON.stringify({ error: `Album ID "${albumId}" already exists` }), { status: 409 });
     }
 
     // Insert album
-    const { error: albumErr } = await supabase.from('albums').insert({
+    const { error: albumErr } = await admin.from('albums').insert({
       id:     albumId,
       title,
       artist,
+      publish_year: publishYear,
       cover:  coverUrl,
     });
     if (albumErr) throw albumErr;
@@ -33,14 +35,15 @@ export const POST = async (context) => {
       id:        t.id || `${albumId}-t${i + 1}`,
       album_id:  albumId,
       title:     t.title,
+      genre:     t.genre || 'General',
       audio:     t.audioUrl,
       play_count: 0,
     }));
 
-    const { error: tracksErr } = await supabase.from('tracks').insert(trackRows);
+    const { error: tracksErr } = await admin.from('tracks').insert(trackRows);
     if (tracksErr) {
       // Rollback album if tracks fail
-      await supabase.from('albums').delete().eq('id', albumId);
+      await admin.from('albums').delete().eq('id', albumId);
       throw tracksErr;
     }
 

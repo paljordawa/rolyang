@@ -1,26 +1,51 @@
-import { createSupabaseServerClient } from '../../../lib/supabaseServer';
+import { createSupabaseServerClient, createAdminClient } from '../../../lib/supabaseServer';
 
 export const POST = async (context) => {
   try {
     const supabase = createSupabaseServerClient(context);
+    const admin = createAdminClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || user.email !== 'paljordawa@gmail.com') return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
     const { albumId } = await context.request.json();
     if (!albumId) return new Response(JSON.stringify({ error: 'albumId required' }), { status: 400 });
 
-    // Delete tracks first (foreign key constraint)
-    const { error: tracksErr } = await supabase.from('tracks').delete().eq('album_id', albumId);
-    if (tracksErr) throw tracksErr;
+    // 1. Get Metadata for cleanup
+    const { data: album } = await admin.from('albums').select('*').eq('id', albumId).single();
+    const { data: tracks } = await admin.from('tracks').select('*').eq('album_id', albumId);
 
-    // Also remove from any playlist_tracks
-    const { data: trackIds } = await supabase.from('tracks').select('id').eq('album_id', albumId);
-    if (trackIds && trackIds.length > 0) {
-      await supabase.from('playlist_tracks').delete().in('track_id', trackIds.map(t => t.id));
+    if (album) {
+      // 2. Storage Cleanup
+      const filesToDeleteAudio = (tracks || [])
+        .map(t => t.audio?.split('/').pop())
+        .filter(Boolean)
+        .map(f => decodeURIComponent(f));
+      
+      const fileToDeleteCover = album.cover?.split('/').pop();
+
+      // Delete from 'audio' bucket
+      if (filesToDeleteAudio.length > 0) {
+        console.log(`[Admin] Deleting ${filesToDeleteAudio.length} tracks from storage for album:`, albumId);
+        await admin.storage.from('audio').remove(filesToDeleteAudio);
+      }
+
+      // Delete from 'thumbnails' bucket
+      if (fileToDeleteCover) {
+        console.log(`[Admin] Deleting cover from storage for album:`, albumId);
+        await admin.storage.from('thumbnails').remove([decodeURIComponent(fileToDeleteCover)]);
+      }
     }
 
-    // Delete album
-    const { error: albumErr } = await supabase.from('albums').delete().eq('id', albumId);
+    // 3. Database Cleanup
+    // Note: If you ran the Cascade SQL, just deleting the album is enough.
+    // But we'll be thorough here.
+    if (tracks && tracks.length > 0) {
+      const trackIds = tracks.map(t => t.id);
+      await admin.from('playlist_tracks').delete().in('track_id', trackIds);
+      await admin.from('tracks').delete().eq('album_id', albumId);
+    }
+
+    const { error: albumErr } = await admin.from('albums').delete().eq('id', albumId);
     if (albumErr) throw albumErr;
 
     return new Response(JSON.stringify({ success: true }), {
