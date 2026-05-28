@@ -1425,16 +1425,16 @@ export default function App() {
                   ['playlists', 'favorites', 'artists'].includes(currentView) && (
                     <div className="flex items-center gap-2 mb-8 overflow-x-auto no-scrollbar py-2 -mx-2 px-2">
                       {[
-                        { id: 'playlists', label: 'Playlists', icon: <ListMusic size={14} /> },
-                        { id: 'artists', label: 'Artists', icon: <Users size={14} /> },
-                        { id: 'favorites', label: 'Favorites', icon: <Heart size={14} /> }
+                        { id: 'playlists', label: 'Playlists', icon: <ListMusic size={16} /> },
+                        { id: 'artists', label: 'Artists', icon: <Users size={16} /> },
+                        { id: 'favorites', label: 'Favorites', icon: <Heart size={16} /> }
                       ].map((tab) => (
                         <button
                           key={tab.id}
                           onClick={() => setCurrentView(tab.id as any)}
-                          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-none text-xs font-bold transition-all whitespace-nowrap active:scale-95 ${currentView === tab.id
+                          className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap active:scale-95 ${currentView === tab.id
                               ? 'bg-[#7c3aed] text-white'
-                              : 'text-[#86868b] hover:text-white'
+                              : 'text-[#86868b] hover:text-white hover:bg-white/5'
                             }`}
                         >
                           {tab.icon}
