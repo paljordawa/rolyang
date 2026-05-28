@@ -2842,7 +2842,7 @@ export default function App() {
                       if (user) {
                         await supabase.auth.signOut();
                       }
-                      localStorage.removeItem('rolyang_onboarding_complete');
+                      localStorage.clear();
                       window.location.reload();
                     }}
                     className="w-full flex items-center gap-4 py-2.5 group transition-all text-left border-b border-white/5"
