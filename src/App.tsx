@@ -2099,7 +2099,7 @@ export default function App() {
               </button>
               <button
                 onClick={audio.togglePlay}
-                className="w-10 h-10 rounded-none bg-[var(--text-primary)] text-black flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-lg"
+                className="w-10 h-10 rounded-full bg-[var(--text-primary)] text-black flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-lg"
               >
                 {audio.isPlaying ? (
                   <Pause fill="currentColor" size={20} strokeWidth={0} strokeLinejoin="miter" strokeLinecap="square" />
