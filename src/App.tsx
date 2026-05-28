@@ -1504,7 +1504,7 @@ export default function App() {
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                        {BROWSE_CATEGORIES.map((cat) => (
+                        {BROWSE_CATEGORIES.filter(cat => tracks.some(song => song.genre === cat.name)).map((cat) => (
                           <div
                             key={cat.name}
                             onClick={() => {
