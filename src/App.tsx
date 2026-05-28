@@ -787,9 +787,13 @@ export default function App() {
             <div className="flex items-center gap-3 shrink-0">
               <button
                 onClick={() => setIsProfileOpen(true)}
-                className="w-10 h-10 rounded-full bg-[#1c1c1e] flex items-center justify-center text-[#86868b] hover:text-white hover:bg-[#2c2c2e] transition-all border border-white/5 shadow-lg group"
+                className="w-10 h-10 rounded-full bg-[#1c1c1e] flex items-center justify-center text-[#86868b] hover:text-white hover:bg-[#2c2c2e] transition-all border border-white/5 shadow-lg group overflow-hidden"
               >
-                <User size={20} className="group-hover:scale-110 transition-transform" />
+                {user?.user_metadata?.avatar_url ? (
+                  <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={20} className="group-hover:scale-110 transition-transform" />
+                )}
               </button>
             </div>
           </div>
