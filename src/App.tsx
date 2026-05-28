@@ -201,28 +201,81 @@ export default function App() {
   const [isLoadingTracks, setIsLoadingTracks] = useState(true);
 
   useEffect(() => {
-    async function fetchTracks() {
-      const { data, error } = await supabase.from('tracks').select('*');
-      if (!error && data) {
-        const formattedTracks = data.map(track => ({
-          id: track.id,
-          title: track.title,
-          artist: track.artist,
-          artistId: track.artist_id,
-          album: track.album,
-          year: track.year || undefined,
-          coverUrl: track.cover_url,
-          audioUrl: track.audio_url,
-          duration: track.duration,
-          genre: track.genre,
-          color: track.color,
-          lyrics: track.lyrics || undefined
+    const fetchData = async () => {
+      try {
+        setIsLoadingTracks(true);
+        
+        const [artistsRes, albumsRes, tracksRes, playlistsRes] = await Promise.all([
+          supabase.from('artists').select('*'),
+          supabase.from('albums').select('*'),
+          supabase.from('tracks').select('*'),
+          supabase.from('playlists').select('*')
+        ]);
+
+        if (artistsRes.error) throw artistsRes.error;
+        if (albumsRes.error) throw albumsRes.error;
+        if (tracksRes.error) throw tracksRes.error;
+        if (playlistsRes.error) throw playlistsRes.error;
+
+        const fetchedArtists = artistsRes.data.map(a => ({
+          id: a.id,
+          name: a.name,
+          bio: a.bio,
+          imageUrl: a.image_url,
+          followers: a.followers,
+          topSongs: a.top_songs || []
         }));
-        setTracks(formattedTracks);
+
+        const fetchedAlbums = albumsRes.data.map(al => ({
+          id: al.id,
+          title: al.title,
+          artistId: al.artist_id,
+          year: al.year,
+          coverUrl: al.cover_url
+        }));
+
+        const fetchedPlaylists = playlistsRes.data.map(p => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          songs: p.songs || [],
+          coverUrl: p.cover_url
+        }));
+
+        const fetchedTracks = tracksRes.data.map(track => {
+          const album = fetchedAlbums.find(al => al.id === track.album_id);
+          const artist = fetchedArtists.find(a => a.id === track.artist_id);
+          
+          return {
+            id: track.id,
+            title: track.title,
+            artistId: track.artist_id,
+            albumId: track.album_id,
+            artist: artist?.name || 'Unknown Artist',
+            album: album?.title || 'Unknown Album',
+            coverUrl: album?.coverUrl || '',
+            year: album?.year || '',
+            audioUrl: track.audio_url,
+            duration: track.duration,
+            genre: track.genre,
+            color: track.color,
+            lyrics: track.lyrics || []
+          };
+        });
+
+        setArtists(fetchedArtists);
+        setAlbums(fetchedAlbums);
+        setPlaylists(fetchedPlaylists);
+        setTracks(fetchedTracks);
+        
+      } catch (err) {
+        console.error("Error fetching data from Supabase:", err);
+      } finally {
+        setIsLoadingTracks(false);
       }
-      setIsLoadingTracks(false);
-    }
-    fetchTracks();
+    };
+
+    fetchData();
   }, []);
 
   const audio = useAudio(tracks);
