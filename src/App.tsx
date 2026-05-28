@@ -2820,22 +2820,39 @@ export default function App() {
 
               <div className="flex flex-col items-center gap-4 w-full">
                 <div className="relative group">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#7c3aed] to-[#ff4d61] flex items-center justify-center shadow-lg shadow-[#7c3aed]/10 ring-2 ring-white/5">
-                    <User size={32} className="text-white" />
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#7c3aed] to-[#ff4d61] flex items-center justify-center shadow-lg shadow-[#7c3aed]/10 ring-2 ring-white/5 overflow-hidden">
+                    {user?.user_metadata?.avatar_url ? (
+                      <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={32} className="text-white" />
+                    )}
                   </div>
                 </div>
 
                 <div className="text-center">
-                  <h3 className="text-xl font-bold text-white mb-0.5 tracking-tight">Guest Account</h3>
+                  <h3 className="text-xl font-bold text-white mb-0.5 tracking-tight">
+                    {user?.user_metadata?.full_name || user?.email || 'Guest Account'}
+                  </h3>
                   <p className="text-[9px] text-[#86868b] font-bold uppercase tracking-[0.2em]">Music Member</p>
                 </div>
 
                 <div className="w-full space-y-1 mt-4">
-                  <button className="w-full flex items-center gap-4 py-2.5 group transition-all text-left border-b border-white/5">
+                  <button 
+                    onClick={async () => {
+                      if (user) {
+                        await supabase.auth.signOut();
+                      }
+                      localStorage.removeItem('rolyang_onboarding_complete');
+                      setIsLoggedIn(false);
+                      setIsProfileOpen(false);
+                      setUser(null);
+                    }}
+                    className="w-full flex items-center gap-4 py-2.5 group transition-all text-left border-b border-white/5"
+                  >
                     <div className="text-[#7c3aed] group-hover:scale-110 transition-transform">
                       <LogIn size={18} />
                     </div>
-                    <span className="font-semibold text-xs text-white">Login</span>
+                    <span className="font-semibold text-xs text-white">{user ? 'Logout' : 'Login'}</span>
                   </button>
 
                   <button className="w-full flex items-center gap-4 py-2.5 group transition-all text-left border-b border-white/5">
