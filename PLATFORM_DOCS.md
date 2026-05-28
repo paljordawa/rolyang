@@ -1,289 +1,183 @@
-# Rolyang Music Platform — Architecture & Operations Guide
+# Rolyang — Platform Architecture & Operations Guide
 
-This document outlines all architectural decisions, infrastructure configuration, and operational procedures for the Rolyang music streaming platform.
-
----
-
-## 1. Technical Foundation: Astro + Unified Audio + View Transitions
-
-### Why Astro?
-
-Astro is primarily designed for Multi-Page Applications (MPAs). Historically, MPAs are incompatible with music platforms because navigating to a new page kills playback. We solve this with **Astro View Transitions** and **Persistent Islands**.
-
-### Continuous Playback Architecture
-
-- Astro intercepts all link clicks and replaces the DOM without a full page reload.
-- The `<Player client:load />` island is marked with `transition:persist`, surviving all DOM swaps untouched.
-- Client-side scripts are initialized on every `astro:page-load` event via `src/scripts/main.js`.
-
-### The Engine: Unified Audio Service (`src/lib/audioService.js`)
-
-An abstracted engine supporting both web and native playback:
-
-- **Web (Howler.js):** `html5: true` enables native browser range-request streaming. Audio starts playing within ~0.5s even for large files.
-- **Native (Capacitor):** Uses `capacitor-music-controls-plugin` for OS lock-screen controls and hardware key support.
-- **Unified API:** Both engines share a single interface (`load`, `play`, `pause`, `seek`, `setVolume`).
-
-> [!IMPORTANT]
-> Capacitor support is permanent and will never be dropped. Do NOT introduce audio formats (e.g., Opus) that are unsupported in iOS/Android WebView.
+This document outlines the architectural decisions, infrastructure, and operational procedures for the **Rolyang** music streaming platform.
 
 ---
 
-## 2. Infrastructure & Backend
+## 1. Technical Foundation: Vite + React + TypeScript
 
-### Database: Supabase (PostgreSQL)
+Rolyang is a fully client-side Single Page Application (SPA) built with **Vite**, **React 19**, and **TypeScript**. The project was migrated from a previous Astro MPA architecture to this stack for improved performance, simpler deployment, and a richer interactive experience.
 
-- **Project URL:** `https://qmmawqxonyyyzphfnemd.supabase.co`
-- **Auth:** Supabase SSR via `@supabase/ssr`. Server client in `src/lib/supabaseServer.js`.
-- **Client:** Browser client in `src/lib/supabase.js`.
-- **Environment Variables Required:**
-  ```
-  PUBLIC_SUPABASE_URL=https://qmmawqxonyyyzphfnemd.supabase.co
-  PUBLIC_SUPABASE_ANON_KEY=<anon key>
-  SUPABASE_SERVICE_ROLE_KEY=<service role key — never commit to Git>
-  ```
+### Tech Stack
 
-### Schema Overview
-
-| Table | Key Columns |
+| Layer | Technology |
 |---|---|
-| `albums` | `id`, `title`, `artist`, `cover` (Supabase Storage URL) |
-| `tracks` | `id`, `album_id`, `title`, `audio` (Supabase Storage URL), `duration`, `play_count` |
-| `playlists` | `id`, `user_id`, `title`, `description`, `cover` |
-| `playlist_tracks` | `playlist_id`, `track_id`, `added_at` |
-| `liked_tracks` | `user_id`, `track_id` |
-| `followed_artists` | `user_id`, `artist_name` |
+| Build Tool | Vite 6 |
+| UI Framework | React 19 |
+| Language | TypeScript |
+| Styling | Tailwind CSS v4 (via `@tailwindcss/vite`) |
+| Animations | Motion (Framer Motion) |
+| Icons | Lucide React |
+| AI Features | Google Gemini (`@google/genai`) |
+| Database / Auth | Supabase |
 
-> [!WARNING]
-> NEVER commit the `SUPABASE_SERVICE_ROLE_KEY` to Git. It has full database bypass access.
+---
 
-### Media Storage: Supabase Storage (CDN)
+## 2. Project Structure
 
-All media files are stored in Supabase Storage and served via Cloudflare-backed CDN. **Do NOT store media files in `public/`** — they would bloat every Netlify deployment.
-
-| Bucket | Contents | Visibility |
-|---|---|---|
-| `audio` | AAC audio tracks (`.m4a`) | Public |
-| `thumbnails` | WebP album covers (`.webp`) | Public |
-
-**URL format:**
 ```
-https://qmmawqxonyyyzphfnemd.supabase.co/storage/v1/object/public/{bucket}/{filename}
-```
-
-### Audio Format: AAC (.m4a)
-
-All audio is encoded as **AAC at 128kbps** using ffmpeg with `-movflags +faststart` for optimal web streaming (metadata at file start).
-
-```bash
-ffmpeg -i input.mp3 -vn -c:a aac -b:a 128k -movflags +faststart output.m4a
-```
-
-- `-vn` strips any embedded video streams (some MP3s contain album art as H.264)
-- `-movflags +faststart` moves the moov atom to the file start — audio begins immediately without waiting for full download
-- AAC is ~20% smaller than MP3 at equivalent quality and is natively supported across all browsers, iOS, and Android WebView
-
-### Image Format: WebP
-
-All album cover images are stored as **WebP at quality 82, 400×400px** (2× retina for max 200px display size).
-
-```bash
-# Using sharp (already installed via Astro)
-node scripts/compress-images.mjs
+rolyang/
+├── lib/
+│   └── supabase.ts          # Supabase client (browser-side)
+├── public/
+│   ├── rolyang-logo.svg     # Official Rolyang logo (used site-wide)
+│   ├── favicon.svg
+│   ├── manifest.webmanifest
+│   ├── social.jpg
+│   └── sw.js
+├── scripts/                 # Admin / migration scripts (Node.js)
+│   ├── add-album.mjs
+│   ├── migrate-to-supabase-storage.mjs
+│   ├── seed.mjs
+│   └── ...
+├── src/
+│   ├── hooks/
+│   │   └── useAudio.ts      # Audio playback hook (Web Audio API + MediaSession)
+│   ├── App.tsx              # Main application + all views + OnboardingScreen
+│   ├── constants.ts         # Static song/artist/playlist data
+│   ├── types.ts             # TypeScript interfaces
+│   ├── index.css            # Global styles + CSS variables + Tailwind
+│   └── main.tsx             # React entry point
+├── .env                     # Supabase keys + Gemini API key
+├── capacitor.config.ts      # Capacitor stub (for future mobile builds)
+├── index.html               # HTML entry point
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
 ```
 
 ---
 
-## 3. Deployment: Netlify
+## 3. Authentication — Rolyang Login / Onboarding Screen
 
-- **Adapter:** `@astrojs/netlify`
-- **Output mode:** `server` (SSR)
-- **Build command:** `npm run build`
-- **Package manager:** `npm` (not pnpm — pnpm caused symlink issues on Netlify)
+On first launch (or after logout), users are presented with the **Rolyang Splash Screen** — a full-screen animated overlay featuring:
 
-### OAuth Redirect Configuration (Required for Production)
+- Animated floating Rolyang logo with cycling colorful glow
+- Pulsing purple atmospheric background glow
+- **Continue with Google** (Supabase OAuth)
+- **Continue with Facebook** (Supabase OAuth)
+- **Continue as Guest** (skips auth, stored in localStorage)
 
-In the **Supabase Dashboard → Authentication → URL Configuration**:
-- **Site URL:** `https://rolyang.netlify.app`
-- **Redirect URLs:** Add `https://rolyang.netlify.app/auth/callback`
+### Auth Flow
 
-> [!CAUTION]
-> Without the correct redirect URL whitelist, Facebook/Google OAuth login will redirect to `localhost` instead of production.
-
----
-
-## 4. State Management (Nanostores)
-
-Because the project uses Astro's Islands Architecture, **[Nanostores](https://github.com/nanostores/nanostores)** provides ultra-fast, framework-agnostic shared state.
-
-### Stores (`src/store/playerStore.js`)
-
-| Store | Type | Purpose |
-|---|---|---|
-| `$isPlaying` | `atom(false)` | Global play/pause state |
-| `$currentTrack` | `atom({bookId, chapIndex, trackId, title, artist})` | Currently playing track |
-| `$likedTracks` | `map({})` | `"albumId:chapId"` → boolean |
-| `$followedArtists` | `map({})` | `"artistName"` → boolean |
-
-### Track Highlighting System
-
-Every track row carries `data-track-id`. The `updateRows()` function in `main.js` highlights by **exact `trackId` match only**:
-
-```js
-const isCurrent = String(row.dataset.trackId) === String(track.trackId);
+```
+App loads
+  └─ isLoggedIn? (localStorage 'rolyang_onboarding_complete')
+       ├─ true  → Show main music player immediately
+       └─ false → Show OnboardingScreen overlay
+                    ├─ OAuth (Google/Facebook) → Supabase session → unlock app
+                    └─ Continue as Guest → localStorage flag set → unlock app
 ```
 
-This ensures the correct track is highlighted across all pages (album, playlist, artist) regardless of context.
-
-> [!NOTE]
-> The Player.jsx store-sync effect is guarded with `if (!currentTrack.bookId) return`. This prevents the default first track (index 0 of album 0) from being written into the store on mount before any user action.
+OAuth redirect URL: `window.location.origin + '/auth/callback'`
 
 ---
 
-## 5. Performance Optimizations
+## 4. Database — Supabase
 
-### Server-Side
-- **Parallelized fetching:** All Supabase queries use `Promise.all()` in Layout.astro, index.astro, and album/[id].astro to eliminate sequential waterfall.
-- **Null-safe rendering:** All Supabase results use `|| []` coalescing (never destructuring defaults, which don't handle `null`).
-- **Search:** Batch-fetches track indices to eliminate N+1 query pattern.
+Rolyang uses **Supabase** (PostgreSQL) as its backend. The connection is managed in `lib/supabase.ts` using `@supabase/supabase-js`.
 
-### Client-Side
-- **Script consolidation:** All inline JS extracted to `src/scripts/main.js` (modular, tree-shakeable).
-- **Library data injection:** `window.__libraryData` and `window.__userPlaylists` injected via inline `<script>` in Layout.astro sidebar, so data is available synchronously to all page scripts.
+### Environment Variables
 
-### Media
-- **Images:** WebP, 400×400px, quality 82 (~90% smaller than original JPGs)
-- **Audio:** AAC 128kbps with `+faststart` (browser streams progressively, not fully downloaded)
-- **CDN:** Supabase Storage backed by Cloudflare — global edge delivery
-
----
-
-## 6. Client-Side Scripts (`src/scripts/main.js`)
-
-All global UI behaviors are initialized in `initApp()`, called on every `astro:page-load`:
-
-| Function | Purpose |
-|---|---|
-| `setupPlayerClickHandler` | Intercepts row/card clicks → dispatches `player:play` |
-| `setupProfileDropdown` | Profile menu toggle + logout |
-| `setupHeaderScroll` | Frosted glass header on scroll |
-| `setupPlayerReveal` | Shows player shell when playback starts |
-| `setupBottomNavVisibility` | Hides bottom nav when player is expanded (mobile) |
-| `setupLikeLogic` | Heart button toggle + DB sync |
-| `setupFollowLogic` | Follow button toggle + DB sync |
-| `setupPlaylistGlobalLogic` | Create/edit/delete playlist modal |
-| `setupTrackContextMenu` | Track "..." context menu |
-| `setupTrackHighlighting` | Subscribes to `$currentTrack` → calls `updateRows()` |
-| `renderLibrary` | Renders sidebar library list (Albums/Playlists/Artists tabs) |
-
----
-
-## 7. Mobile Development (Capacitor)
-
-### Build & Sync Process
-
-```bash
-# 1. Build Astro to dist/
-npm run build
-
-# 2. Sync to native folders
-npx cap sync
-
-# 3. Open in IDE
-npx cap open android
-npx cap open ios
+```env
+# Vite-compatible (used by lib/supabase.ts)
+VITE_SUPABASE_URL=https://<project>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon-key>
 ```
 
-> [!TIP]
-> Ensure `capacitor.config.ts` has `webDir: 'dist'`.
+> ⚠️ **Do not modify the Supabase connection or database schema** through the app. All schema changes must be made directly in the Supabase dashboard.
 
-### Background Audio
+### Admin / Migration Scripts
 
-- **Android:** Foreground Service via `capacitor-music-controls-plugin`
-- **iOS:** Enable "Audio, AirPlay, and Picture in Picture" background modes in Xcode
-
-### Media Session (Lock Screen)
-
-`audioService.js` calls `navigator.mediaSession` on web and `MusicControls.create()` on native, propagating track title, artist, album, and artwork to the OS.
-
----
-
-## 8. Utility Scripts (`scripts/`)
+The `scripts/` folder contains Node.js utilities for data management:
 
 | Script | Purpose |
 |---|---|
-| `compress-images.mjs` | Converts JPG/PNG thumbnails → WebP (400px, q82) using sharp |
-| `convert-to-aac.mjs` | Batch-converts MP3/WAV → AAC .m4a using ffmpeg |
-| `migrate-to-supabase-storage.mjs` | Uploads audio + thumbnails to Supabase Storage, updates DB URLs |
-| `update-cover-urls.mjs` | Updates album cover URLs in DB (one-off, post-migration) |
-| **`add-album.mjs`** | **Full one-command workflow to add a new album (see Section 9)** |
+| `seed.mjs` | Seed initial song/album data |
+| `add-album.mjs` | Add a new album to Supabase |
+| `migrate-to-supabase-storage.mjs` | Migrate media files to Supabase Storage |
+| `compress-images.mjs` | Compress cover images |
+| `convert-to-aac.mjs` | Convert audio files to AAC |
+| `update-cover-urls.mjs` | Update cover image URLs in the DB |
 
 ---
 
-## 9. Adding New Music (One-Command Workflow)
+## 5. Audio Playback — `useAudio` Hook
 
-Use `scripts/add-album.mjs` to add a new album and its tracks in a single step.
+All audio playback is managed by the `src/hooks/useAudio.ts` hook.
 
-### What you need
+**Features:**
+- Web Audio API via native `<Audio>` element
+- Queue management with shuffle support
+- MediaSession API integration (lock screen controls, OS media notifications)
+- Auto-advance to next track on song end
+- Volume control
+- Seek support
 
-1. A folder containing the audio files (MP3, WAV, FLAC, or M4A) — **files are sorted alphabetically, so name them with track numbers (e.g. `01-song.mp3`, `02-song.mp3`)**
-2. A cover image (JPG or PNG — any size, will be auto-resized to 400×400 WebP)
-3. A unique album ID (e.g. `album-4`)
+---
 
-### Command
+## 6. Views & Navigation
 
-```powershell
-$env:PUBLIC_SUPABASE_URL="https://qmmawqxonyyyzphfnemd.supabase.co"
-$env:SUPABASE_SERVICE_ROLE_KEY="<your service role key>"
+The app is a single-page app with view state managed in `App.tsx`:
 
-node scripts/add-album.mjs `
-  --id        "album-4" `
-  --title     "My New Album" `
-  --artist    "Artist Name" `
-  --cover     "C:/path/to/cover.jpg" `
-  --audio-dir "C:/path/to/audio/folder"
-```
-
-### What happens automatically
-
-| Step | Action |
+| View | Description |
 |---|---|
-| 1 | Cover image → compressed to WebP (400×400, q82) |
-| 2 | All audio files → converted to AAC .m4a (128kbps, +faststart) |
-| 3 | Cover uploaded to Supabase Storage `thumbnails` bucket |
-| 4 | All tracks uploaded to Supabase Storage `audio` bucket |
-| 5 | Album row inserted into `albums` table |
-| 6 | All track rows inserted into `tracks` table |
+| `listenNow` | Home / featured content |
+| `browse` | Genre/category browser |
+| `favorites` | User's liked songs |
+| `artists` | Artist directory |
+| `playlists` | User-created + default playlists |
 
-### Track ID format
+Navigation:
+- **Desktop**: Left sidebar (256px wide)
+- **Mobile**: Bottom navigation bar + top search header
 
-Tracks are automatically assigned IDs in the format `{album-id}-t{number}`:
-- `album-4-t1`, `album-4-t2`, `album-4-t3`, etc.
+---
 
-### Track titles
+## 7. Running Locally
 
-Titles are derived from filenames by stripping leading track numbers:
-- `01 - Midnight Rain.mp3` → title: `Midnight Rain`
-- `03_Something Good.mp3` → title: `Something Good`
-
-You can edit titles manually in the Supabase Dashboard → Table Editor → `tracks` after upload if needed.
-
-> [!TIP]
-> After running the script, your new album is immediately live at `/album/{album-id}` — no deployment needed since data is fetched from Supabase at request time.
-
-
-Run scripts with env vars:
 ```bash
-$env:PUBLIC_SUPABASE_URL="..."; $env:SUPABASE_SERVICE_ROLE_KEY="..."; node scripts/<script>.mjs
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+# → http://localhost:3000
+
+# Type check
+npm run lint
+
+# Production build
+npm run build
 ```
 
 ---
 
-## 9. Environment Setup (Local Development)
+## 8. Environment Setup
 
-1. Copy `.env.example` to `.env`
-2. Fill in `PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY` from Supabase Dashboard → Project Settings → API
-3. Run `npm install` then `npm run dev`
+Copy `.env` and fill in your Supabase credentials:
 
-> [!NOTE]
-> The app requires authentication — you must log in before seeing any content. Use Facebook or email/password OAuth configured in your Supabase project.
+```env
+VITE_SUPABASE_URL=https://<your-project>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-anon-key>
+GEMINI_API_KEY=<your-gemini-key>  # for AI features
+```
+
+---
+
+## 9. Branding
+
+The official Rolyang logo is at `public/rolyang-logo.svg` and is used in:
+- Desktop sidebar (32×32)
+- Mobile top header (32×32, tappable home button)
+- Login / Onboarding splash screen (animated, 128×128 / 160×160 on md+)

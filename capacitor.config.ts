@@ -1,9 +1,6 @@
-import type { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
+// Capacitor config stub — mobile build not active in this Vite-only version
+export default {
   appId: 'com.rolyang.app',
   appName: 'Rolyang',
-  webDir: 'dist'
+  webDir: 'dist',
 };
-
-export default config;
