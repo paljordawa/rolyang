@@ -10,11 +10,11 @@
 - 🔐 **Supabase Auth** — Google & Facebook OAuth login with guest mode
 - 🎨 **Apple Music-style UI** — Dark glassmorphism design with dynamic color theming
 - 📱 **Fully responsive** — Desktop sidebar + mobile bottom nav
-- 🔍 **Search & Browse** — Filter by genre, artist, album
-- ❤️ **Favorites & Playlists** — User-created playlists and liked songs
+- 🔍 **Search & Browse** — Dynamic genre filtering based on available tracks
+- ❤️ **Favorites & Playlists** — Synced securely to Supabase `user_favorites`
 - 🎤 **Artists & Albums** — Detailed artist/album pages
 - 🌍 **Bilingual** — English + Tibetan (བོད་སྐད།) language toggle
-- 🔒 **Login Splash Screen** — Animated Rolyang logo onboarding with OAuth buttons
+- 🔒 **Login Splash Screen** — OAuth buttons with dynamic avatar rendering and strict session isolation on logout
 - 🤖 **AI features** — Powered by Google Gemini
 
 ---
@@ -79,7 +79,6 @@ rolyang/
 │   ├── hooks/
 │   │   └── useAudio.ts   # Audio playback engine
 │   ├── App.tsx           # Main app + all views
-│   ├── constants.ts      # Songs, artists, playlists data
 │   ├── types.ts          # TypeScript types
 │   ├── index.css         # Global styles
 │   └── main.tsx          # Entry point
@@ -96,6 +95,7 @@ rolyang/
 
 - Database schema and table changes must be made in the **Supabase Dashboard** directly.
 - The Supabase client in `lib/supabase.ts` uses `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+- All tracks, artists, albums, and playlists are fetched dynamically from the database.
 - Admin data scripts are in the `scripts/` folder.
 
 ---

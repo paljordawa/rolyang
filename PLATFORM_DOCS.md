@@ -44,7 +44,6 @@ rolyang/
 │   ├── hooks/
 │   │   └── useAudio.ts      # Audio playback hook (Web Audio API + MediaSession)
 │   ├── App.tsx              # Main application + all views + OnboardingScreen
-│   ├── constants.ts         # Static song/artist/playlist data
 │   ├── types.ts             # TypeScript interfaces
 │   ├── index.css            # Global styles + CSS variables + Tailwind
 │   └── main.tsx             # React entry point
@@ -68,18 +67,20 @@ On first launch (or after logout), users are presented with the **Rolyang Splash
 - **Continue with Facebook** (Supabase OAuth)
 - **Continue as Guest** (skips auth, stored in localStorage)
 
-### Auth Flow
+### Auth Flow & Session Isolation
 
 ```
 App loads
   └─ isLoggedIn? (localStorage 'rolyang_onboarding_complete')
-       ├─ true  → Show main music player immediately
+       ├─ true  → Show main music player immediately (dynamic user avatar displayed)
        └─ false → Show OnboardingScreen overlay
                     ├─ OAuth (Google/Facebook) → Supabase session → unlock app
                     └─ Continue as Guest → localStorage flag set → unlock app
 ```
 
-OAuth redirect URL: `window.location.origin + '/auth/callback'`
+**Security & Isolation**: When a user logs out, the app triggers a complete `localStorage.clear()` and a hard browser reload (`window.location.reload()`). This ensures that the audio player is immediately stopped, memory state is wiped, and `favorites`/`followedArtists` caches are destroyed so data does not leak between active sessions.
+
+OAuth redirect URL: `window.location.origin` (Redirects to root without a dedicated callback page)
 
 ---
 
@@ -133,14 +134,15 @@ The app is a single-page app with view state managed in `App.tsx`:
 | View | Description |
 |---|---|
 | `listenNow` | Home / featured content |
-| `browse` | Genre/category browser |
-| `favorites` | User's liked songs |
-| `artists` | Artist directory |
-| `playlists` | User-created + default playlists |
+| `browse` | Genre browser (dynamically hides genres with 0 tracks) |
+| `favorites` | User's liked songs (Synced securely to Supabase `user_favorites`) |
+| `artists` | Artist directory (Loaded from Supabase) |
+| `playlists` | User-created + default playlists (Loaded from Supabase) |
 
 Navigation:
 - **Desktop**: Left sidebar (256px wide)
 - **Mobile**: Bottom navigation bar + top search header
+- **UI Details**: Uses rounded-full "pill" tabs and fully rounded circular play buttons for a premium aesthetic.
 
 ---
 
