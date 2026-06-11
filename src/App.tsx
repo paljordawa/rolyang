@@ -3240,14 +3240,14 @@ export default function App() {
                     <span className="font-semibold text-xs text-white">{user ? 'Logout' : 'Login'}</span>
                   </button>
 
-                  <button onClick={() => { setIsPrivacyPolicyOpen(true); setIsProfileOpen(false); }} className="w-full flex items-center gap-4 py-2.5 group transition-all text-left border-b border-white/5">
+                  <button onClick={() => setIsPrivacyPolicyOpen(true)} className="w-full flex items-center gap-4 py-2.5 group transition-all text-left border-b border-white/5">
                     <div className="text-[#86868b] group-hover:text-white transition-colors group-hover:scale-110 transition-transform">
                       <ShieldCheck size={18} />
                     </div>
                     <span className="font-semibold text-xs text-white">Privacy Policy</span>
                   </button>
 
-                  <button onClick={() => { setIsAboutUsOpen(true); setIsProfileOpen(false); }} className="w-full flex items-center gap-4 py-2.5 group transition-all text-left">
+                  <button onClick={() => setIsAboutUsOpen(true)} className="w-full flex items-center gap-4 py-2.5 group transition-all text-left">
                     <div className="text-[#86868b] group-hover:text-white transition-colors group-hover:scale-110 transition-transform">
                       <Info size={18} />
                     </div>
