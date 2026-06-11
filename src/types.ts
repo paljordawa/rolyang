@@ -33,7 +33,7 @@ export interface Song {
   year?: string;
   
   duration: number; // in seconds
-  genre: string;
+  genres: string[];
   color: string; // Vibrant color for the glass background
   audioUrl: string;
   lyrics?: LyricLine[];

@@ -198,6 +198,7 @@ export default function App() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [browseCategories, setBrowseCategories] = useState<{name: string, color: string, icon: string}[]>([]);
   const [isLoadingTracks, setIsLoadingTracks] = useState(true);
 
   useEffect(() => {
@@ -205,11 +206,13 @@ export default function App() {
       try {
         setIsLoadingTracks(true);
         
-        const [artistsRes, albumsRes, tracksRes, playlistsRes] = await Promise.all([
+        const [artistsRes, albumsRes, tracksRes, playlistsRes, genresRes, trackGenresRes] = await Promise.all([
           supabase.from('artists').select('*'),
           supabase.from('albums').select('*'),
           supabase.from('tracks').select('*'),
-          supabase.from('playlists').select('*')
+          supabase.from('playlists').select('*'),
+          supabase.from('genres').select('*'),
+          supabase.from('track_genres').select('*')
         ]);
 
         if (artistsRes.error) throw artistsRes.error;
@@ -242,6 +245,19 @@ export default function App() {
           coverUrl: p.cover_url
         }));
 
+        const genreMap = (genresRes.data || []).reduce((acc: any, g: any) => {
+          acc[g.id] = g.name;
+          return acc;
+        }, {});
+
+        const trackGenresMap = (trackGenresRes.data || []).reduce((acc: any, tg: any) => {
+          if (!acc[tg.track_id]) acc[tg.track_id] = [];
+          if (genreMap[tg.genre_id]) {
+            acc[tg.track_id].push(genreMap[tg.genre_id]);
+          }
+          return acc;
+        }, {});
+
         const fetchedTracks = tracksRes.data.map(track => {
           const album = fetchedAlbums.find(al => al.id === track.album_id);
           const artist = fetchedArtists.find(a => a.id === track.artist_id);
@@ -257,7 +273,7 @@ export default function App() {
             year: album?.year || '',
             audioUrl: track.audio_url,
             duration: track.duration,
-            genre: track.genre,
+            genres: trackGenresMap[track.id] || [],
             color: track.color,
             lyrics: track.lyrics || []
           };
@@ -267,6 +283,29 @@ export default function App() {
         setAlbums(fetchedAlbums);
         setPlaylists(fetchedPlaylists);
         setTracks(fetchedTracks);
+        
+        const COLOR_PALETTES = [
+          'from-pink-500 to-rose-500',
+          'from-blue-600 to-indigo-700',
+          'from-red-600 to-orange-700',
+          'from-yellow-500 to-amber-600',
+          'from-slate-700 to-slate-900',
+          'from-emerald-400 to-teal-500',
+          'from-orange-500 to-red-600',
+          'from-cyan-500 to-blue-500',
+          'from-purple-500 to-fuchsia-600',
+          'from-green-500 to-lime-600'
+        ];
+        
+        const ICONS = ['✨', '🎧', '🎷', '🎤', '🎸', '🌿', '⚡', '🧠', '🎹', '🎼'];
+
+        const fetchedCategories = (genresRes.data || []).map((g: any, i: number) => ({
+          name: g.name,
+          color: COLOR_PALETTES[i % COLOR_PALETTES.length],
+          icon: ICONS[i % ICONS.length]
+        }));
+        
+        setBrowseCategories(fetchedCategories);
         
       } catch (err) {
         console.error("Error fetching data from Supabase:", err);
@@ -370,17 +409,6 @@ export default function App() {
   }, [followedArtists]);
 
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-
-  const BROWSE_CATEGORIES = [
-    { name: 'Pop', color: 'from-pink-500 to-rose-500', icon: '✨' },
-    { name: 'Electronic', color: 'from-blue-600 to-indigo-700', icon: '🎧' },
-    { name: 'R&B', color: 'from-red-600 to-orange-700', icon: '🎷' },
-    { name: 'Hip-Hop', color: 'from-yellow-500 to-amber-600', icon: '🎤' },
-    { name: 'Rock', color: 'from-slate-700 to-slate-900', icon: '🎸' },
-    { name: 'Chill', color: 'from-emerald-400 to-teal-500', icon: '🌿' },
-    { name: 'Workout', color: 'from-orange-500 to-red-600', icon: '⚡' },
-    { name: 'Focus', color: 'from-cyan-500 to-blue-500', icon: '🧠' },
-  ];
 
   const toggleFavorite = async (songId: string) => {
     const isFav = favorites.includes(songId);
@@ -517,11 +545,11 @@ export default function App() {
   const [activeGenre, setActiveGenre] = useState('All');
   const [searchType, setSearchType] = useState<'all' | 'artists' | 'albums'>('all');
 
-  const genres = ['All', ...Array.from(new Set(tracks.map(s => s.genre)))];
+  const genres = ['All', ...Array.from(new Set(tracks.flatMap(s => s.genres || [])))];
 
   const filteredSongs = tracks.filter(song => {
     const query = (searchQuery || '').toLowerCase();
-    const matchesGenre = activeGenre === 'All' || song.genre === activeGenre;
+    const matchesGenre = activeGenre === 'All' || song.genres?.includes(activeGenre);
 
     if (query === '') return matchesGenre;
 
@@ -1504,7 +1532,7 @@ export default function App() {
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                        {BROWSE_CATEGORIES.filter(cat => tracks.some(song => song.genre === cat.name)).map((cat) => (
+                        {browseCategories.map((cat) => (
                           <div
                             key={cat.name}
                             onClick={() => {
@@ -1610,8 +1638,8 @@ export default function App() {
                     className="flex flex-col min-h-full"
                   >
                     {(() => {
-                      const cat = BROWSE_CATEGORIES.find(c => c.name === selectedGenre) || BROWSE_CATEGORIES[0];
-                      const genreSongs = tracks.filter(s => s.genre === selectedGenre);
+                      const cat = browseCategories.find(c => c.name === selectedGenre) || browseCategories[0] || {name: selectedGenre, color: 'from-fuchsia-500 to-purple-600', icon: '🎵'};
+                      const genreSongs = tracks.filter(s => s.genres?.includes(selectedGenre));
 
                       return (
                         <>
