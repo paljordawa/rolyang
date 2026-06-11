@@ -3082,17 +3082,27 @@ export default function App() {
               <h3 className="text-3xl font-black mb-2 font-display italic">Rolyang</h3>
               <p className="text-[#7c3aed] font-bold text-xs tracking-[0.2em] uppercase mb-6">The heartbeat of Tibetan music</p>
               
-              <div className="space-y-4 text-sm text-white/80 leading-relaxed mb-8 text-left px-4">
+              <div className="space-y-4 text-sm text-white/80 leading-relaxed mb-8 text-left px-4 w-full">
                 <p>
                   Built with passion, Rolyang is a modern platform dedicated to preserving both traditional and contemporary Tibetan songs. Our mission is to keep our rich musical heritage accessible to everyone, completely free of charge, with absolutely zero ads between songs.
                 </p>
                 <p>
-                  This project is maintained as a labor of love. However, keeping the servers running and eventually expanding Rolyang into native mobile apps requires resources. 
+                  This project is maintained as a labor of love. However, keeping the servers running and continually improving the platform requires resources. 
                 </p>
                 <p>
-                  If you'd like to support the project—whether to help cover our current platform fees or contribute to our mobile development—please contact me at <a href="mailto:paljordawa@gmail.com" className="text-[#7c3aed] hover:underline font-semibold">paljordawa@gmail.com</a>. Your support helps keep this platform alive and thriving for our community.
+                  If you'd like to support the project—whether to help cover our current platform fees or contribute to our development—please contact me at <a href="mailto:paljordawa@gmail.com" className="text-[#7c3aed] hover:underline font-semibold">paljordawa@gmail.com</a>. Your support helps keep this platform alive and thriving for our community.
                 </p>
-                <p className="text-xs text-white/50 pt-4 text-center">
+
+                <div className="mt-6 pt-4 border-t border-white/10">
+                  <h4 className="font-bold text-white mb-3 tracking-wide">Our Future Plans:</h4>
+                  <ul className="list-disc pl-5 space-y-2 text-white/70">
+                    <li><strong className="text-white/90">Contributor & Artist Accounts:</strong> Dedicated portals for artists to manage their profiles and upload their own music.</li>
+                    <li><strong className="text-white/90">Mobile Apps:</strong> Official distribution to iOS (App Store) and Android (Play Store) for a native mobile experience.</li>
+                    <li><strong className="text-white/90">Smart Features:</strong> Future improvements including auto-lyrics transcription and detection for an immersive sing-along experience.</li>
+                  </ul>
+                </div>
+
+                <p className="text-xs text-white/50 pt-6 text-center">
                   Version 0.1.0-beta<br/>
                   Powered by Kikisoso
                 </p>
