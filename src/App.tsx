@@ -198,6 +198,7 @@ export default function App() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [browseCategories, setBrowseCategories] = useState<{name: string, color: string, icon: string}[]>([]);
   const [isLoadingTracks, setIsLoadingTracks] = useState(true);
 
@@ -206,13 +207,14 @@ export default function App() {
       try {
         setIsLoadingTracks(true);
         
-        const [artistsRes, albumsRes, tracksRes, playlistsRes, genresRes, trackGenresRes] = await Promise.all([
+        const [artistsRes, albumsRes, tracksRes, playlistsRes, genresRes, trackGenresRes, bannersRes] = await Promise.all([
           supabase.from('artists').select('*'),
           supabase.from('albums').select('*'),
           supabase.from('tracks').select('*'),
           supabase.from('playlists').select('*'),
           supabase.from('genres').select('*'),
-          supabase.from('track_genres').select('*')
+          supabase.from('track_genres').select('*'),
+          supabase.from('banners').select('*').order('sort_order', { ascending: true })
         ]);
 
         if (artistsRes.error) throw artistsRes.error;
@@ -283,6 +285,7 @@ export default function App() {
         setAlbums(fetchedAlbums);
         setPlaylists(fetchedPlaylists);
         setTracks(fetchedTracks);
+        setBanners(bannersRes.data || []);
         
         const COLOR_PALETTES = [
           'from-pink-500 to-rose-500',
@@ -1522,9 +1525,9 @@ export default function App() {
                                 audio.setIsPlaying(true);
                               }
                             }}
-                            className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-br ${mood.color} hover:scale-105 active:scale-95 transition-transform shadow-lg`}
+                            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs text-white bg-gradient-to-br ${mood.color} hover:scale-105 active:scale-95 transition-transform shadow-sm`}
                           >
-                            <span className="text-lg">{mood.icon}</span> {mood.name}
+                            <span className="text-base">{mood.icon}</span> {mood.name}
                           </button>
                         ))}
                       </div>
@@ -1533,7 +1536,7 @@ export default function App() {
                     {/* Hero Carousel */}
                     <section>
                       {(() => {
-                        const heroItems = [
+                        const defaultHeroItems = [
                           {
                             title: 'Trending Artist',
                             subtitle: artists[0]?.name || 'Tsering Gyuymay',
@@ -1557,6 +1560,19 @@ export default function App() {
                           }
                         ];
 
+                        const heroItems = banners && banners.length > 0 && banners.some(b => b.is_active)
+                          ? banners.filter(b => b.is_active).map((b, i) => ({
+                              title: 'Featured',
+                              subtitle: b.title,
+                              image: b.image_url,
+                              color: i % 2 === 0 ? 'from-purple-900/80 to-black' : 'from-blue-900/80 to-black',
+                              buttonText: b.link_url ? 'Learn More' : 'Play Now',
+                              action: () => {
+                                if (b.link_url) window.open(b.link_url, '_blank');
+                              }
+                            }))
+                          : defaultHeroItems;
+
                         return (
                           <div className="flex overflow-x-auto no-scrollbar gap-4 -mx-4 px-4 lg:mx-0 lg:px-0 snap-x snap-mandatory">
                             {heroItems.map((item, i) => (
@@ -1571,7 +1587,8 @@ export default function App() {
                                   <div className="text-xs md:text-sm font-black tracking-widest uppercase text-white/70 mb-1">{item.title}</div>
                                   <div className="text-2xl md:text-4xl font-bold text-white mb-4">{item.subtitle}</div>
                                   <button className="w-fit px-6 py-2 rounded-full bg-white text-black font-bold text-sm flex items-center gap-2 group-hover:bg-[#7c3aed] group-hover:text-white transition-colors">
-                                    <Play fill="currentColor" size={16} /> Play Now
+                                    {item.buttonText === 'Learn More' ? null : <Play fill="currentColor" size={16} />} 
+                                    {item.buttonText || 'Play Now'}
                                   </button>
                                 </div>
                               </div>

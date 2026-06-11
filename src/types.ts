@@ -47,5 +47,14 @@ export interface Playlist {
   coverUrl: string;
 }
 
+export interface Banner {
+  id: string;
+  title: string;
+  image_url: string;
+  link_url?: string;
+  is_active: boolean;
+  sort_order: number;
+}
+
 export type ThemeMode = 'light' | 'dark';
 export type Language = 'en' | 'bo';
