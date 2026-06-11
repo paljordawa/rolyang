@@ -3082,14 +3082,17 @@ export default function App() {
               <h3 className="text-3xl font-black mb-2 font-display italic">Rolyang</h3>
               <p className="text-[#7c3aed] font-bold text-xs tracking-[0.2em] uppercase mb-6">The heartbeat of Tibetan music</p>
               
-              <div className="space-y-4 text-sm text-white/80 leading-relaxed mb-8">
+              <div className="space-y-4 text-sm text-white/80 leading-relaxed mb-8 text-left px-4">
                 <p>
-                  Built with passion, Rolyang is a modern platform dedicated to preserving, celebrating, and sharing the rich heritage of Tibetan music with the world.
+                  Built with passion, Rolyang is a modern platform dedicated to preserving both traditional and contemporary Tibetan songs. Our mission is to keep our rich musical heritage accessible to everyone, completely free of charge, with absolutely zero ads between songs.
                 </p>
                 <p>
-                  Our mission is to connect listeners with the artists and melodies that define our culture, providing a seamless and visually stunning listening experience for generations to come.
+                  This project is maintained as a labor of love. However, keeping the servers running and eventually expanding Rolyang into native mobile apps requires resources. 
                 </p>
-                <p className="text-xs text-white/50 pt-4">
+                <p>
+                  If you'd like to support the project—whether to help cover our current platform fees or contribute to our mobile development—please contact me at <a href="mailto:paljordawa@gmail.com" className="text-[#7c3aed] hover:underline font-semibold">paljordawa@gmail.com</a>. Your support helps keep this platform alive and thriving for our community.
+                </p>
+                <p className="text-xs text-white/50 pt-4 text-center">
                   Version 0.1.0-beta<br/>
                   Powered by React & Supabase
                 </p>
