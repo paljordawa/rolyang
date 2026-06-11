@@ -587,7 +587,6 @@ export default function App() {
   );
 
   const t = translations[lang];
-
   const openArtist = (artistId: string) => {
     const artist = artists.find(a => a.id === artistId);
     if (artist) {
@@ -606,6 +605,8 @@ export default function App() {
               setIsLoggedIn(true);
               localStorage.setItem('rolyang_onboarding_complete', 'true');
             }}
+            openPrivacyPolicy={() => setIsPrivacyPolicyOpen(true)}
+            openAboutUs={() => setIsAboutUsOpen(true)}
           />
         )}
       </AnimatePresence>
@@ -3003,7 +3004,7 @@ export default function App() {
       {/* Privacy Policy Modal */}
       <AnimatePresence>
         {isPrivacyPolicyOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -3058,7 +3059,7 @@ export default function App() {
       {/* About Us Modal */}
       <AnimatePresence>
         {isAboutUsOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -3468,7 +3469,15 @@ function MobileNavItem({ icon, label, active = false, onClick }: { icon: React.R
 
 // ─── Rolyang Login / Onboarding Screen ────────────────────────────────────────
 
-function OnboardingScreen({ onContinueAsGuest }: { onContinueAsGuest: () => void }) {
+function OnboardingScreen({ 
+  onContinueAsGuest,
+  openPrivacyPolicy,
+  openAboutUs
+}: { 
+  onContinueAsGuest: () => void,
+  openPrivacyPolicy: () => void,
+  openAboutUs: () => void
+}) {
   const handleOAuth = async (provider: 'google' | 'facebook') => {
     if (!isSupabaseConfigured) {
       onContinueAsGuest();
@@ -3545,7 +3554,8 @@ function OnboardingScreen({ onContinueAsGuest }: { onContinueAsGuest: () => void
           Continue as Guest
         </button>
         <p className="text-[11px] text-white/25 text-center font-medium">
-          By continuing, you agree to Rolyang's <span className="text-white/50">Terms of Service</span> and <span className="text-white/50">Privacy Policy</span>.
+          By continuing, you agree to Rolyang's <button onClick={openPrivacyPolicy} className="text-white/50 hover:underline">Privacy Policy</button>.<br />
+          <button onClick={openAboutUs} className="text-white/50 hover:underline mt-2">Learn more About Us</button>
         </p>
       </motion.div>
     </motion.div>
