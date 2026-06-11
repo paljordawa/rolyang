@@ -3015,7 +3015,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl glass-light border border-white/10 p-8 rounded-3xl shadow-2xl z-10 max-h-[80vh] flex flex-col"
+              className="relative w-full max-w-2xl glass-light border border-white/10 p-6 sm:p-8 rounded-3xl shadow-2xl z-10 max-h-[85vh] flex flex-col"
             >
               <h3 className="text-2xl font-bold mb-2 font-display italic">Privacy Policy</h3>
               <p className="text-[#86868b] text-sm mb-6">Last updated: June 11, 2026</p>
@@ -3070,7 +3070,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg glass-light border border-white/10 p-8 rounded-3xl shadow-2xl z-10 flex flex-col items-center text-center overflow-hidden"
+              className="relative w-full max-w-lg glass-light border border-white/10 p-6 sm:p-8 rounded-3xl shadow-2xl z-10 flex flex-col items-center text-center overflow-hidden max-h-[85vh]"
             >
               <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-[#7c3aed]/20 to-transparent pointer-events-none" />
               
@@ -3082,7 +3082,7 @@ export default function App() {
               <h3 className="text-3xl font-black mb-2 font-display italic">Rolyang</h3>
               <p className="text-[#7c3aed] font-bold text-xs tracking-[0.2em] uppercase mb-6">The heartbeat of Tibetan music</p>
               
-              <div className="space-y-4 text-sm text-white/80 leading-relaxed mb-8 text-left px-4 w-full">
+              <div className="space-y-4 text-sm text-white/80 leading-relaxed mb-6 text-left px-2 sm:px-4 w-full flex-1 overflow-y-auto custom-scrollbar">
                 <p>
                   Built with passion, Rolyang is a modern platform dedicated to preserving both traditional and contemporary Tibetan songs. Our mission is to keep our rich musical heritage accessible to everyone, completely free of charge, with absolutely zero ads between songs.
                 </p>
