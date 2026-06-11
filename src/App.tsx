@@ -1717,7 +1717,21 @@ export default function App() {
                                     </div>
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <div className="font-bold text-sm truncate group-hover:text-[#7c3aed] transition-colors">{song.title}</div>
+                                    <div className="flex items-center gap-2">
+                                      <div className={`font-bold text-sm truncate transition-colors ${audio.currentSong?.id === song.id ? 'text-[#7c3aed]' : 'group-hover:text-[#7c3aed]'}`}>{song.title}</div>
+                                      {audio.currentSong?.id === song.id && audio.isPlaying && (
+                                        <div className="flex gap-0.5 items-end h-3 mb-0.5">
+                                          {[1, 2, 3].map(j => (
+                                            <motion.div
+                                              key={j}
+                                              animate={{ height: ["20%", "100%", "20%"] }}
+                                              transition={{ duration: 0.6, repeat: Infinity, delay: j * 0.1 }}
+                                              className="w-0.5 bg-[#7c3aed] rounded-full"
+                                            />
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                     <div
                                       className="text-xs text-[#86868b] truncate hover:text-white transition-colors cursor-pointer"
                                       onClick={(e) => {
