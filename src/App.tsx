@@ -1474,53 +1474,198 @@ export default function App() {
                 )}
 
                 {currentView === 'listenNow' && !searchQuery && (
-                  <>
-                    {/* Welcome/Header */}
-                    <div className="mb-6">
-                      <h2 className="text-2xl lg:text-3xl font-bold font-display italic tracking-tight mb-1">Listen Now</h2>
-                      <div className="h-1 w-8 bg-[#7c3aed] rounded-full" />
+                  <div className="space-y-10 pb-24">
+                    {/* Header & Quick Actions */}
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                      <div>
+                        <h2 className="text-3xl lg:text-4xl font-bold font-display italic tracking-tight mb-2">
+                          Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, Paljor
+                        </h2>
+                        <div className="h-1 w-12 bg-gradient-to-r from-[#7c3aed] to-fuchsia-500 rounded-full" />
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => {
+                            if (tracks.length > 0) {
+                              const shuffled = [...tracks].sort(() => Math.random() - 0.5);
+                              audio.setCurrentSong(shuffled[0]);
+                              audio.setManualQueue(shuffled.slice(1));
+                              audio.setIsPlaying(true);
+                            }
+                          }}
+                          className="px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 text-white font-bold text-sm flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-purple-500/20"
+                        >
+                          <Shuffle size={16} /> Surprise Me
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Featured Horizontal Scroll for Mobile / Grid for Desktop */}
-                    <div className="flex overflow-x-auto lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4 -mx-4 px-4 lg:mx-0 lg:px-0 no-scrollbar snap-x snap-mandatory scroll-smooth">
-                      {playlists.slice(0, 3).map((p) => (
-                        <div key={p.id} className="min-w-[70vw] lg:min-w-0 snap-start">
-                          <PlaylistCard playlist={p} onClick={() => setSelectedPlaylist(p)} />
+                    {/* Mood Pills */}
+                    <section>
+                      <div className="flex overflow-x-auto no-scrollbar gap-3 -mx-4 px-4 lg:mx-0 lg:px-0">
+                        {[
+                          { name: 'Morning Vibes', icon: '☕', color: 'from-orange-400 to-amber-600', filter: () => tracks.slice(0, 5) },
+                          { name: 'Workout', icon: '⚡', color: 'from-red-500 to-rose-600', filter: () => tracks.filter(t => t.genres?.includes('Pop') || t.genres?.includes('Electronic')) },
+                          { name: 'Deep Focus', icon: '🎧', color: 'from-blue-500 to-indigo-600', filter: () => tracks.filter(t => t.genres?.includes('Folk') || t.genres?.includes('Acoustic')) },
+                          { name: 'Late Night', icon: '🌙', color: 'from-slate-700 to-indigo-900', filter: () => tracks.slice().reverse().slice(0, 5) },
+                        ].map((mood, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              let matching = mood.filter();
+                              if (matching.length === 0) matching = tracks; // fallback
+                              if (matching.length > 0) {
+                                const shuffled = [...matching].sort(() => Math.random() - 0.5);
+                                audio.setCurrentSong(shuffled[0]);
+                                audio.setManualQueue(shuffled.slice(1));
+                                audio.setIsPlaying(true);
+                              }
+                            }}
+                            className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-br ${mood.color} hover:scale-105 active:scale-95 transition-transform shadow-lg`}
+                          >
+                            <span className="text-lg">{mood.icon}</span> {mood.name}
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+
+                    {/* Hero Carousel */}
+                    <section>
+                      {(() => {
+                        const heroItems = [
+                          {
+                            title: 'Trending Artist',
+                            subtitle: artists[0]?.name || 'Tsering Gyuymay',
+                            image: artists[0]?.imageUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1000&auto=format&fit=crop',
+                            color: 'from-purple-900/80 to-black',
+                            action: () => {
+                              if (artists[0]) openArtist(artists[0].id);
+                            }
+                          },
+                          {
+                            title: 'New Release',
+                            subtitle: newlyReleasedSongs[0]?.title || 'Latest Hit',
+                            image: newlyReleasedSongs[0]?.coverUrl || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1000&auto=format&fit=crop',
+                            color: 'from-blue-900/80 to-black',
+                            action: () => {
+                              if (newlyReleasedSongs[0]) {
+                                audio.setCurrentSong(newlyReleasedSongs[0]);
+                                audio.setIsPlaying(true);
+                              }
+                            }
+                          }
+                        ];
+
+                        return (
+                          <div className="flex overflow-x-auto no-scrollbar gap-4 -mx-4 px-4 lg:mx-0 lg:px-0 snap-x snap-mandatory">
+                            {heroItems.map((item, i) => (
+                              <div 
+                                key={i} 
+                                onClick={item.action}
+                                className="relative flex-shrink-0 w-[85vw] md:w-[60vw] lg:w-[45vw] aspect-[2/1] md:aspect-[21/9] rounded-3xl overflow-hidden snap-center cursor-pointer group shadow-2xl"
+                              >
+                                <img src={item.image} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                                <div className={`absolute inset-0 bg-gradient-to-t ${item.color} opacity-80`} />
+                                <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-end">
+                                  <div className="text-xs md:text-sm font-black tracking-widest uppercase text-white/70 mb-1">{item.title}</div>
+                                  <div className="text-2xl md:text-4xl font-bold text-white mb-4">{item.subtitle}</div>
+                                  <button className="w-fit px-6 py-2 rounded-full bg-white text-black font-bold text-sm flex items-center gap-2 group-hover:bg-[#7c3aed] group-hover:text-white transition-colors">
+                                    <Play fill="currentColor" size={16} /> Play Now
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </section>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                      {/* Trending Right Now (Live) */}
+                      <section>
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-xl font-bold font-display italic">Trending Right Now</h3>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20">
+                              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                              <span className="text-[10px] font-black text-red-500 tracking-widest uppercase">Live</span>
+                            </div>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.3 }}
-                      className="mb-10"
-                    >
-                      <h3 className="text-lg lg:text-xl font-semibold mb-6 flex items-center justify-between">
-                        Newly released songs
-                      </h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-6">
-                        {newlyReleasedSongs.map(song => (
-                          <HomeSongCard
-                            key={song.id}
-                            song={song}
-                            onClick={() => audio.setCurrentSong(song)}
-                          />
-                        ))}
+                        
+                        <div className="bg-white/5 border border-white/5 rounded-2xl p-2 md:p-4">
+                          {tracks.slice(0, 5).map((song, i) => (
+                            <div
+                              key={song.id}
+                              onClick={() => { audio.setCurrentSong(song); audio.setIsPlaying(true); }}
+                              className="flex items-center gap-4 p-2 md:p-3 rounded-xl group cursor-pointer hover:bg-white/5 transition-all"
+                            >
+                              <div className="w-6 text-center font-bold text-white/30 text-sm">{i + 1}</div>
+                              <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                                <img src={song.coverUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <Play size={16} className="text-white fill-white" />
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <div className={`font-bold text-sm truncate transition-colors ${audio.currentSong?.id === song.id ? 'text-[#7c3aed]' : 'group-hover:text-[#7c3aed]'}`}>{song.title}</div>
+                                  {audio.currentSong?.id === song.id && audio.isPlaying && (
+                                    <div className="hidden md:flex gap-0.5 items-end h-3 mb-0.5">
+                                      {[1, 2, 3].map(j => (
+                                        <motion.div
+                                          key={j}
+                                          animate={{ height: ["20%", "100%", "20%"] }}
+                                          transition={{ duration: 0.6, repeat: Infinity, delay: j * 0.1 }}
+                                          className="w-0.5 bg-[#7c3aed] rounded-full"
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <div 
+                                  className="text-xs text-[#86868b] truncate hover:text-white transition-colors cursor-pointer inline-block max-w-full"
+                                  onClick={(e) => { e.stopPropagation(); openArtist(song.artistId); }}
+                                >
+                                  {song.artist}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                      
+                      <div className="space-y-10">
+                        {/* Jump Back In */}
+                        {audio.currentSong && (
+                          <section>
+                            <h3 className="text-xl font-bold mb-6 font-display italic">Jump Back In</h3>
+                            <div className="flex flex-col gap-3">
+                              <FeaturedSong song={audio.currentSong} onClick={() => audio.setIsPlaying(true)} onArtistClick={() => openArtist(audio.currentSong!.artistId)} />
+                            </div>
+                          </section>
+                        )}
+                        
+                        {/* Newly Released Songs */}
+                        <section>
+                          <h3 className="text-xl font-bold mb-6 font-display italic flex items-center justify-between">
+                            Newly Released
+                            <button className="text-xs font-semibold text-[#7c3aed] uppercase tracking-widest hover:underline" onClick={() => setCurrentView('browse')}>See All</button>
+                          </h3>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            {newlyReleasedSongs.slice(0, 3).map(song => (
+                              <HomeSongCard
+                                key={song.id}
+                                song={song}
+                                onClick={() => audio.setCurrentSong(song)}
+                              />
+                            ))}
+                          </div>
+                        </section>
                       </div>
-                    </motion.div>
-
-                    <div className="mb-6">
-                      <h3 className="text-lg lg:text-xl font-semibold mb-4">Made For You</h3>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                        {tracks.slice(0, 2).map(song => (
-                          <FeaturedSong key={song.id} song={song} onClick={() => audio.setCurrentSong(song)} onArtistClick={() => openArtist(song.artistId)} />
-                        ))}
-                      </div>
                     </div>
-                  </>
+                  </div>
                 )}
 
                 {currentView === 'browse' && !searchQuery && !selectedGenre && (
