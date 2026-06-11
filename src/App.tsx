@@ -3229,13 +3229,6 @@ export default function App() {
                     <span className="font-semibold text-xs text-white">{user ? 'Logout' : 'Login'}</span>
                   </button>
 
-                  <button className="w-full flex items-center gap-4 py-2.5 group transition-all text-left border-b border-white/5">
-                    <div className="text-[#86868b] group-hover:text-white transition-colors group-hover:scale-110 transition-transform">
-                      <Settings size={18} />
-                    </div>
-                    <span className="font-semibold text-xs text-white">Settings</span>
-                  </button>
-
                   <button onClick={() => { setIsPrivacyPolicyOpen(true); setIsProfileOpen(false); }} className="w-full flex items-center gap-4 py-2.5 group transition-all text-left border-b border-white/5">
                     <div className="text-[#86868b] group-hover:text-white transition-colors group-hover:scale-110 transition-transform">
                       <ShieldCheck size={18} />
