@@ -1733,7 +1733,7 @@ export default function App() {
                                       )}
                                     </div>
                                     <div
-                                      className="text-xs text-[#86868b] truncate hover:text-white transition-colors cursor-pointer"
+                                      className="text-xs text-[#86868b] truncate hover:text-white transition-colors cursor-pointer inline-block max-w-full"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         openArtist(song.artistId);
@@ -3001,7 +3001,7 @@ function SongCard({
           <div className={`font-medium text-[9px] lg:text-[11px] truncate ${active ? 'text-[#7c3aed]' : ''}`}>{song.title}</div>
         </div>
         <div
-          className="text-[8px] lg:text-[9px] text-[#86868b] truncate hover:text-[var(--text-primary)]"
+          className="text-[8px] lg:text-[9px] text-[#86868b] truncate hover:text-[var(--text-primary)] inline-block max-w-full"
           onClick={(e) => {
             e.stopPropagation();
             onArtistClick?.();
