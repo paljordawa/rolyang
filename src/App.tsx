@@ -388,6 +388,10 @@ export default function App() {
   const [isShuffled, setIsShuffled] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
+  const [isAboutUsOpen, setIsAboutUsOpen] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [editPlaylistName, setEditPlaylistName] = useState('');
   const [editPlaylistDesc, setEditPlaylistDesc] = useState('');
@@ -2996,6 +3000,111 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Privacy Policy Modal */}
+      <AnimatePresence>
+        {isPrivacyPolicyOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsPrivacyPolicyOpen(false)}
+              className="absolute inset-0 bg-black/80"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl glass-light border border-white/10 p-8 rounded-3xl shadow-2xl z-10 max-h-[80vh] flex flex-col"
+            >
+              <h3 className="text-2xl font-bold mb-2 font-display italic">Privacy Policy</h3>
+              <p className="text-[#86868b] text-sm mb-6">Last updated: June 11, 2026</p>
+              
+              <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar space-y-6 text-sm text-white/80">
+                <section>
+                  <h4 className="text-white font-bold text-base mb-2">1. Information We Collect</h4>
+                  <p>When you use Rolyang, we collect information you provide directly to us (such as when you create an account) and information automatically collected through your use of the platform (such as your listening history, favorites, and device information).</p>
+                </section>
+                
+                <section>
+                  <h4 className="text-white font-bold text-base mb-2">2. How We Use Your Information</h4>
+                  <p>We use the information we collect to provide, maintain, and improve our services, to develop new features, and to protect Rolyang and our users. Your listening history is primarily used to generate better music recommendations for you.</p>
+                </section>
+
+                <section>
+                  <h4 className="text-white font-bold text-base mb-2">3. Sharing of Information</h4>
+                  <p>We do not sell your personal information. We may share information with third-party service providers that perform services on our behalf (such as hosting and database services via Supabase) in compliance with our strict privacy standards.</p>
+                </section>
+
+                <section>
+                  <h4 className="text-white font-bold text-base mb-2">4. Your Rights</h4>
+                  <p>You have the right to access, update, or delete your personal information at any time. You can manage your account settings directly within the app or contact our support team for assistance.</p>
+                </section>
+              </div>
+
+              <div className="mt-8 pt-4 border-t border-white/10 flex justify-end">
+                <button
+                  onClick={() => setIsPrivacyPolicyOpen(false)}
+                  className="px-8 py-3 rounded-xl bg-[#7c3aed] text-white font-bold transition-all hover:bg-[#6d28d9] hover:scale-105 active:scale-95 shadow-lg shadow-[#7c3aed]/20"
+                >
+                  I Understand
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* About Us Modal */}
+      <AnimatePresence>
+        {isAboutUsOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAboutUsOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg glass-light border border-white/10 p-8 rounded-3xl shadow-2xl z-10 flex flex-col items-center text-center overflow-hidden"
+            >
+              <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-[#7c3aed]/20 to-transparent pointer-events-none" />
+              
+              <div className="w-24 h-24 mb-6 relative">
+                <div className="absolute inset-0 bg-[#7c3aed] blur-2xl opacity-50 rounded-full" />
+                <img src="/rolyang-logo.svg" alt="Rolyang Logo" className="relative z-10 w-full h-full object-contain" />
+              </div>
+
+              <h3 className="text-3xl font-black mb-2 font-display italic">Rolyang</h3>
+              <p className="text-[#7c3aed] font-bold text-xs tracking-[0.2em] uppercase mb-6">Music streaming reimagined</p>
+              
+              <div className="space-y-4 text-sm text-white/80 leading-relaxed mb-8">
+                <p>
+                  Built with passion, Rolyang is a modern music streaming platform designed to provide a seamless and visually stunning listening experience.
+                </p>
+                <p>
+                  Our mission is to connect listeners with the music they love through an intuitive interface, dynamic design, and blazing-fast performance.
+                </p>
+                <p className="text-xs text-white/50 pt-4">
+                  Version 0.1.0-beta<br/>
+                  Powered by React & Supabase
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsAboutUsOpen(false)}
+                className="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all border border-white/10"
+              >
+                Close
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       {/* Add to Playlist Modal */}
       <AnimatePresence>
         {isAddToPlaylistModalOpen && (
@@ -3124,14 +3233,14 @@ export default function App() {
                     <span className="font-semibold text-xs text-white">Settings</span>
                   </button>
 
-                  <button className="w-full flex items-center gap-4 py-2.5 group transition-all text-left border-b border-white/5">
+                  <button onClick={() => { setIsPrivacyPolicyOpen(true); setIsProfileOpen(false); }} className="w-full flex items-center gap-4 py-2.5 group transition-all text-left border-b border-white/5">
                     <div className="text-[#86868b] group-hover:text-white transition-colors group-hover:scale-110 transition-transform">
                       <ShieldCheck size={18} />
                     </div>
                     <span className="font-semibold text-xs text-white">Privacy Policy</span>
                   </button>
 
-                  <button className="w-full flex items-center gap-4 py-2.5 group transition-all text-left">
+                  <button onClick={() => { setIsAboutUsOpen(true); setIsProfileOpen(false); }} className="w-full flex items-center gap-4 py-2.5 group transition-all text-left">
                     <div className="text-[#86868b] group-hover:text-white transition-colors group-hover:scale-110 transition-transform">
                       <Info size={18} />
                     </div>
