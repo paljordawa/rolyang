@@ -56,5 +56,11 @@ export interface Banner {
   sort_order: number;
 }
 
+export interface Genre {
+  id: string;
+  name: string;
+  image_url?: string;
+}
+
 export type ThemeMode = 'light' | 'dark';
 export type Language = 'en' | 'bo';

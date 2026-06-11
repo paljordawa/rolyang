@@ -66,6 +66,29 @@ npm run build
 
 ---
 
+## Adding New Music
+
+To add new songs to the database and upload them to Supabase Storage automatically, use the provided `upload-library.mjs` script.
+
+### 1. Organize your files locally
+Create a `local_library` folder in the root directory and organize your files like this:
+```text
+local_library/
+  └── The Weeknd/                 <-- Artist folder
+      ├── profile.jpg             <-- (Optional) Artist image
+      └── 2016 - Starboy/         <-- Album folder (Format: "Year - Title")
+          ├── cover.jpg           <-- Album cover
+          ├── 01 - Starboy.mp3    <-- Audio track (Format: "TrackNum - Title")
+          └── 02 - Party.mp3
+```
+
+### 2. Run the upload script
+```bash
+node scripts/upload-library.mjs
+```
+The script will automatically sanitize folder names, upload all assets to the `media` Supabase storage bucket, and perfectly sync your relational database (`artists`, `albums`, `tracks`).
+
+---
 ## Project Structure
 
 ```

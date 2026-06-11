@@ -199,7 +199,7 @@ export default function App() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
-  const [browseCategories, setBrowseCategories] = useState<{name: string, color: string, icon: string}[]>([]);
+  const [browseCategories, setBrowseCategories] = useState<{id: string, name: string, color: string, icon: string, image_url?: string}[]>([]);
   const [isLoadingTracks, setIsLoadingTracks] = useState(true);
 
   useEffect(() => {
@@ -303,9 +303,11 @@ export default function App() {
         const ICONS = ['✨', '🎧', '🎷', '🎤', '🎸', '🌿', '⚡', '🧠', '🎹', '🎼'];
 
         const fetchedCategories = (genresRes.data || []).map((g: any, i: number) => ({
+          id: g.id,
           name: g.name,
           color: COLOR_PALETTES[i % COLOR_PALETTES.length],
-          icon: ICONS[i % ICONS.length]
+          icon: ICONS[i % ICONS.length],
+          image_url: g.image_url
         }));
         
         setBrowseCategories(fetchedCategories);
@@ -1694,24 +1696,39 @@ export default function App() {
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                        {browseCategories.map((cat) => (
-                          <div
-                            key={cat.name}
-                            onClick={() => {
-                              setSelectedGenre(cat.name);
-                              setActiveGenre(cat.name);
-                            }}
-                            className={`relative aspect-[16/9] rounded-lg p-4 overflow-hidden group cursor-pointer transition-all duration-500 bg-gradient-to-br ${cat.color}`}
-                          >
-                            <div className="relative z-10 font-black text-white text-base md:text-lg tracking-tight group-hover:scale-110 transition-transform origin-left">
-                              {cat.name}
+                        {browseCategories.map((cat) => {
+                          const trackCount = tracks.filter(t => t.genres.includes(cat.name)).length;
+                          return (
+                            <div
+                              key={cat.name}
+                              onClick={() => {
+                                setSelectedGenre(cat.name);
+                                setActiveGenre(cat.name);
+                              }}
+                              className={`relative aspect-[4/3] rounded-lg p-4 overflow-hidden group cursor-pointer transition-all duration-500 ${!cat.image_url ? `bg-gradient-to-br ${cat.color}` : 'bg-black'}`}
+                            >
+                              {cat.image_url && (
+                                <img src={cat.image_url} alt={cat.name} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
+                              )}
+                              <div className="relative z-10 flex flex-col h-full justify-between">
+                                <div>
+                                  <div className="font-black text-white text-base md:text-lg tracking-tight group-hover:scale-105 transition-transform origin-left drop-shadow-md">
+                                    {cat.name}
+                                  </div>
+                                  <div className="text-xs text-white/70 font-semibold mt-1 drop-shadow-md">
+                                    {trackCount} {trackCount === 1 ? 'Track' : 'Tracks'}
+                                  </div>
+                                </div>
+                              </div>
+                              {!cat.image_url && (
+                                <div className="absolute right-[-10%] bottom-[-10%] text-5xl md:text-6xl opacity-20 rotate-[15deg] group-hover:rotate-0 transition-all duration-500">
+                                  {cat.icon}
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                             </div>
-                            <div className="absolute right-[-10%] bottom-[-10%] text-5xl md:text-6xl opacity-20 rotate-[15deg] group-hover:rotate-0 transition-all duration-500">
-                              {cat.icon}
-                            </div>
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </section>
 
@@ -1802,16 +1819,32 @@ export default function App() {
                     {(() => {
                       const cat = browseCategories.find(c => c.name === selectedGenre) || browseCategories[0] || {name: selectedGenre, color: 'from-fuchsia-500 to-purple-600', icon: '🎵'};
                       const genreSongs = tracks.filter(s => s.genres?.includes(selectedGenre));
+                      const uniqueArtistIds = Array.from(new Set(genreSongs.map(s => s.artistId)));
+                      const genreArtists = artists.filter(a => uniqueArtistIds.includes(a.id));
+                      
+                      // For collage, get up to 6 unique album covers from the genre's songs
+                      const uniqueCovers = Array.from(new Set(genreSongs.map(s => s.coverUrl).filter(url => url))).slice(0, 6);
 
                       return (
                         <>
                           <div className={`relative min-h-[40vh] md:h-[50vh] flex flex-col justify-end p-6 md:p-12 overflow-hidden`}>
-                            <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-40`} />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/40 to-transparent" />
+                            {uniqueCovers.length > 0 ? (
+                              <div className="absolute inset-0 grid grid-cols-2 sm:grid-cols-3 opacity-30">
+                                {uniqueCovers.map((cover, idx) => (
+                                  <img key={idx} src={cover} alt="" className="w-full h-full object-cover" />
+                                ))}
+                              </div>
+                            ) : (
+                              <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-40`} />
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/80 to-[var(--bg-primary)]/20" />
+                            <div className="absolute inset-0 backdrop-blur-3xl" />
 
-                            <div className="absolute right-[-5%] top-[-5%] text-[20rem] opacity-10 rotate-[15deg] select-none pointer-events-none">
-                              {cat.icon}
-                            </div>
+                            {!uniqueCovers.length && (
+                              <div className="absolute right-[-5%] top-[-5%] text-[20rem] opacity-10 rotate-[15deg] select-none pointer-events-none">
+                                {cat.icon}
+                              </div>
+                            )}
 
                             <button
                               onClick={() => setSelectedGenre(null)}
@@ -1856,6 +1889,33 @@ export default function App() {
                           </div>
 
                           <div className="flex-1 px-4 sm:px-8 md:px-12 py-8 max-w-7xl mx-auto w-full">
+                            
+                            {/* Top Artists Row */}
+                            {genreArtists.length > 0 && (
+                              <div className="mb-10">
+                                <div className="flex items-center justify-between mb-6">
+                                  <h3 className="text-xl font-bold font-display italic">Top Artists in {selectedGenre}</h3>
+                                </div>
+                                <div className="flex overflow-x-auto gap-4 pb-4 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+                                  {genreArtists.map(artist => (
+                                    <div 
+                                      key={artist.id} 
+                                      className="flex-shrink-0 w-32 sm:w-40 group cursor-pointer"
+                                      onClick={() => openArtist(artist.id)}
+                                    >
+                                      <div className="w-full aspect-square rounded-full overflow-hidden mb-3">
+                                        <img src={artist.imageUrl} alt={artist.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                      </div>
+                                      <div className="text-center">
+                                        <div className="font-bold text-sm truncate group-hover:text-[#7c3aed] transition-colors">{artist.name}</div>
+                                        <div className="text-xs text-[#86868b]">Artist</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
                             <div className="flex items-center justify-between mb-8">
                               <h3 className="text-xl font-bold font-display italic">Recommended Songs</h3>
                               <span className="text-xs text-[#86868b] font-medium uppercase tracking-widest">{genreSongs.length} items</span>
