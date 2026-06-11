@@ -216,10 +216,14 @@ export default function App() {
         supabase.from('banners').select('*').order('sort_order', { ascending: true })
       ]);
 
-      if (artistsRes.error) throw artistsRes.error;
-      if (albumsRes.error) throw albumsRes.error;
-      if (tracksRes.error) throw tracksRes.error;
-      if (playlistsRes.error) throw playlistsRes.error;
+      if (artistsRes.error) { console.error('artists error:', artistsRes.error); throw artistsRes.error; }
+      if (albumsRes.error) { console.error('albums error:', albumsRes.error); throw albumsRes.error; }
+      if (tracksRes.error) { console.error('tracks error:', tracksRes.error); throw tracksRes.error; }
+      if (playlistsRes.error) { console.error('playlists error:', playlistsRes.error); throw playlistsRes.error; }
+      if (genresRes.error) console.error('genres RLS error:', genresRes.error);
+      if (trackGenresRes.error) console.error('track_genres RLS error:', trackGenresRes.error);
+      
+      console.log('[Rolyang] Data loaded — tracks:', tracksRes.data?.length, 'genres:', genresRes.data?.length, 'track_genres:', trackGenresRes.data?.length);
 
       const fetchedArtists = artistsRes.data.map((a: any) => ({
         id: a.id,
