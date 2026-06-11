@@ -202,125 +202,125 @@ export default function App() {
   const [browseCategories, setBrowseCategories] = useState<{id: string, name: string, color: string, icon: string, image_url?: string}[]>([]);
   const [isLoadingTracks, setIsLoadingTracks] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoadingTracks(true);
+  const fetchAllData = React.useCallback(async () => {
+    try {
+      setIsLoadingTracks(true);
+      
+      const [artistsRes, albumsRes, tracksRes, playlistsRes, genresRes, trackGenresRes, bannersRes] = await Promise.all([
+        supabase.from('artists').select('*'),
+        supabase.from('albums').select('*'),
+        supabase.from('tracks').select('*'),
+        supabase.from('playlists').select('*'),
+        supabase.from('genres').select('*'),
+        supabase.from('track_genres').select('*'),
+        supabase.from('banners').select('*').order('sort_order', { ascending: true })
+      ]);
+
+      if (artistsRes.error) throw artistsRes.error;
+      if (albumsRes.error) throw albumsRes.error;
+      if (tracksRes.error) throw tracksRes.error;
+      if (playlistsRes.error) throw playlistsRes.error;
+
+      const fetchedArtists = artistsRes.data.map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        bio: a.bio,
+        imageUrl: a.image_url,
+        followers: a.followers,
+        topSongs: a.top_songs || []
+      }));
+
+      const fetchedAlbums = albumsRes.data.map((al: any) => ({
+        id: al.id,
+        title: al.title,
+        artistId: al.artist_id,
+        year: al.year,
+        coverUrl: al.cover_url
+      }));
+
+      const fetchedPlaylists = playlistsRes.data.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        songs: p.songs || [],
+        coverUrl: p.cover_url
+      }));
+
+      const genreMap = (genresRes.data || []).reduce((acc: any, g: any) => {
+        acc[g.id] = g.name;
+        return acc;
+      }, {});
+
+      const trackGenresMap = (trackGenresRes.data || []).reduce((acc: any, tg: any) => {
+        if (!acc[tg.track_id]) acc[tg.track_id] = [];
+        if (genreMap[tg.genre_id]) {
+          acc[tg.track_id].push(genreMap[tg.genre_id]);
+        }
+        return acc;
+      }, {});
+
+      const fetchedTracks = tracksRes.data.map((track: any) => {
+        const album = fetchedAlbums.find((al: any) => al.id === track.album_id);
+        const artist = fetchedArtists.find((a: any) => a.id === track.artist_id);
         
-        const [artistsRes, albumsRes, tracksRes, playlistsRes, genresRes, trackGenresRes, bannersRes] = await Promise.all([
-          supabase.from('artists').select('*'),
-          supabase.from('albums').select('*'),
-          supabase.from('tracks').select('*'),
-          supabase.from('playlists').select('*'),
-          supabase.from('genres').select('*'),
-          supabase.from('track_genres').select('*'),
-          supabase.from('banners').select('*').order('sort_order', { ascending: true })
-        ]);
+        return {
+          id: track.id,
+          title: track.title,
+          artistId: track.artist_id,
+          albumId: track.album_id,
+          artist: artist?.name || 'Unknown Artist',
+          album: album?.title || 'Unknown Album',
+          coverUrl: album?.coverUrl || '',
+          year: album?.year || '',
+          audioUrl: track.audio_url,
+          duration: track.duration,
+          genres: trackGenresMap[track.id] || [],
+          color: track.color,
+          lyrics: track.lyrics || []
+        };
+      });
 
-        if (artistsRes.error) throw artistsRes.error;
-        if (albumsRes.error) throw albumsRes.error;
-        if (tracksRes.error) throw tracksRes.error;
-        if (playlistsRes.error) throw playlistsRes.error;
+      setArtists(fetchedArtists);
+      setAlbums(fetchedAlbums);
+      setPlaylists(fetchedPlaylists);
+      setTracks(fetchedTracks);
+      setBanners(bannersRes.data || []);
+      
+      const COLOR_PALETTES = [
+        'from-pink-500 to-rose-500',
+        'from-blue-600 to-indigo-700',
+        'from-red-600 to-orange-700',
+        'from-yellow-500 to-amber-600',
+        'from-slate-700 to-slate-900',
+        'from-emerald-400 to-teal-500',
+        'from-orange-500 to-red-600',
+        'from-cyan-500 to-blue-500',
+        'from-purple-500 to-fuchsia-600',
+        'from-green-500 to-lime-600'
+      ];
+      
+      const ICONS = ['✨', '🎧', '🎷', '🎤', '🎸', '🌿', '⚡', '🧠', '🎹', '🎼'];
 
-        const fetchedArtists = artistsRes.data.map(a => ({
-          id: a.id,
-          name: a.name,
-          bio: a.bio,
-          imageUrl: a.image_url,
-          followers: a.followers,
-          topSongs: a.top_songs || []
-        }));
-
-        const fetchedAlbums = albumsRes.data.map(al => ({
-          id: al.id,
-          title: al.title,
-          artistId: al.artist_id,
-          year: al.year,
-          coverUrl: al.cover_url
-        }));
-
-        const fetchedPlaylists = playlistsRes.data.map(p => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          songs: p.songs || [],
-          coverUrl: p.cover_url
-        }));
-
-        const genreMap = (genresRes.data || []).reduce((acc: any, g: any) => {
-          acc[g.id] = g.name;
-          return acc;
-        }, {});
-
-        const trackGenresMap = (trackGenresRes.data || []).reduce((acc: any, tg: any) => {
-          if (!acc[tg.track_id]) acc[tg.track_id] = [];
-          if (genreMap[tg.genre_id]) {
-            acc[tg.track_id].push(genreMap[tg.genre_id]);
-          }
-          return acc;
-        }, {});
-
-        const fetchedTracks = tracksRes.data.map(track => {
-          const album = fetchedAlbums.find(al => al.id === track.album_id);
-          const artist = fetchedArtists.find(a => a.id === track.artist_id);
-          
-          return {
-            id: track.id,
-            title: track.title,
-            artistId: track.artist_id,
-            albumId: track.album_id,
-            artist: artist?.name || 'Unknown Artist',
-            album: album?.title || 'Unknown Album',
-            coverUrl: album?.coverUrl || '',
-            year: album?.year || '',
-            audioUrl: track.audio_url,
-            duration: track.duration,
-            genres: trackGenresMap[track.id] || [],
-            color: track.color,
-            lyrics: track.lyrics || []
-          };
-        });
-
-        setArtists(fetchedArtists);
-        setAlbums(fetchedAlbums);
-        setPlaylists(fetchedPlaylists);
-        setTracks(fetchedTracks);
-        setBanners(bannersRes.data || []);
-        
-        const COLOR_PALETTES = [
-          'from-pink-500 to-rose-500',
-          'from-blue-600 to-indigo-700',
-          'from-red-600 to-orange-700',
-          'from-yellow-500 to-amber-600',
-          'from-slate-700 to-slate-900',
-          'from-emerald-400 to-teal-500',
-          'from-orange-500 to-red-600',
-          'from-cyan-500 to-blue-500',
-          'from-purple-500 to-fuchsia-600',
-          'from-green-500 to-lime-600'
-        ];
-        
-        const ICONS = ['✨', '🎧', '🎷', '🎤', '🎸', '🌿', '⚡', '🧠', '🎹', '🎼'];
-
-        const fetchedCategories = (genresRes.data || []).map((g: any, i: number) => ({
-          id: g.id,
-          name: g.name,
-          color: COLOR_PALETTES[i % COLOR_PALETTES.length],
-          icon: ICONS[i % ICONS.length],
-          image_url: g.image_url
-        }));
-        
-        setBrowseCategories(fetchedCategories);
-        
-      } catch (err) {
-        console.error("Error fetching data from Supabase:", err);
-      } finally {
-        setIsLoadingTracks(false);
-      }
-    };
-
-    fetchData();
+      const fetchedCategories = (genresRes.data || []).map((g: any, i: number) => ({
+        id: g.id,
+        name: g.name,
+        color: COLOR_PALETTES[i % COLOR_PALETTES.length],
+        icon: ICONS[i % ICONS.length],
+        image_url: g.image_url
+      }));
+      
+      setBrowseCategories(fetchedCategories);
+      
+    } catch (err) {
+      console.error("Error fetching data from Supabase:", err);
+    } finally {
+      setIsLoadingTracks(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   const audio = useAudio(tracks);
 
@@ -370,6 +370,8 @@ export default function App() {
         setIsLoggedIn(true);
         localStorage.setItem('rolyang_onboarding_complete', 'true');
         loadUserData(session.user.id);
+        // Refetch all public data now that the session is established
+        fetchAllData();
       }
     });
     return () => subscription.unsubscribe();
