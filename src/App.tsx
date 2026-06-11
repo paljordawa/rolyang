@@ -3094,7 +3094,7 @@ export default function App() {
                 </p>
                 <p className="text-xs text-white/50 pt-4 text-center">
                   Version 0.1.0-beta<br/>
-                  Powered by React & Supabase
+                  Powered by Kikisoso
                 </p>
               </div>
 
