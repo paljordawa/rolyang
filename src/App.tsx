@@ -44,7 +44,7 @@ import {
 } from 'lucide-react';
 import { Song, Album } from './types';
 import { useAudio } from './hooks/useAudio';
-import { Language, Artist, Playlist } from './types';
+import { Language, Artist, Playlist, Banner } from './types';
 
 const formatTime = (seconds: number) => {
   const mins = Math.floor(seconds / 60);
