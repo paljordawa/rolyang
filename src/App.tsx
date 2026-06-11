@@ -1488,7 +1488,7 @@ export default function App() {
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                       <div>
                         <h2 className="text-3xl lg:text-4xl font-bold font-display italic tracking-tight mb-2">
-                          Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, Paljor
+                          Tashi Delek
                         </h2>
                         <div className="h-1 w-12 bg-gradient-to-r from-[#7c3aed] to-fuchsia-500 rounded-full" />
                       </div>
