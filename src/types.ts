@@ -24,7 +24,7 @@ export interface Song {
   id: string;
   title: string;
   artistId: string;
-  albumId: string;
+  albumId?: string | null;
   
   // These fields are populated dynamically on the frontend by joining with Artists and Albums
   artist: string;
