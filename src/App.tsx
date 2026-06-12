@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, cloneElement, useMemo } from 'react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, supabasePublic, isSupabaseConfigured } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   Home,
@@ -207,13 +207,13 @@ export default function App() {
       setIsLoadingTracks(true);
       
       const [artistsRes, albumsRes, tracksRes, playlistsRes, genresRes, trackGenresRes, bannersRes] = await Promise.all([
-        supabase.from('artists').select('*'),
-        supabase.from('albums').select('*'),
-        supabase.from('tracks').select('*'),
-        supabase.from('playlists').select('*'),
-        supabase.from('genres').select('*'),
-        supabase.from('track_genres').select('*'),
-        supabase.from('banners').select('*').order('sort_order', { ascending: true })
+        supabasePublic.from('artists').select('*'),
+        supabasePublic.from('albums').select('*'),
+        supabasePublic.from('tracks').select('*'),
+        supabasePublic.from('playlists').select('*'),
+        supabasePublic.from('genres').select('*'),
+        supabasePublic.from('track_genres').select('*'),
+        supabasePublic.from('banners').select('*').order('sort_order', { ascending: true })
       ]);
 
       if (artistsRes.error) { console.error('artists error:', artistsRes.error); throw artistsRes.error; }
