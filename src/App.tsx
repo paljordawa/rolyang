@@ -273,9 +273,9 @@ export default function App() {
           artistId: track.artist_id,
           albumId: track.album_id,
           artist: artist?.name || 'Unknown Artist',
-          album: album?.title || 'Unknown Album',
-          coverUrl: album?.coverUrl || '',
-          year: album?.year || '',
+          album: album?.title || 'Single',
+          coverUrl: track.cover_url || album?.coverUrl || '',
+          year: track.year || album?.year || '',
           audioUrl: track.audio_url,
           duration: track.duration,
           genres: trackGenresMap[track.id] || [],
@@ -1410,24 +1410,48 @@ export default function App() {
 
                     <h3 className="text-xl font-bold mb-6">Discography</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
-                      {Array.from(new Set(tracks.filter(s => s.artistId === selectedArtist.id).map(s => s.album))).map(albumName => {
-                        const albumSong = tracks.find(s => s.album === albumName);
+                      {/* Albums */}
+                      {albums.filter(al => al.artistId === selectedArtist.id).map(album => {
                         return (
                           <div
-                            key={albumName}
+                            key={album.id}
                             className="group cursor-pointer"
-                            onClick={() => setSelectedAlbum({ name: albumName, artistId: selectedArtist.id })}
+                            onClick={() => setSelectedAlbum({ name: album.title, artistId: selectedArtist.id })}
                           >
                             <div className="relative aspect-square rounded-2xl overflow-hidden mb-3 shadow-lg group-hover:shadow-2xl transition-all duration-300">
-                              <img src={albumSong?.coverUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                              <img src={album.coverUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <div className="w-12 h-12 rounded-none bg-white/10 flex items-center justify-center text-white">
                                   <Play fill="white" size={24} strokeWidth={0} strokeLinejoin="miter" strokeLinecap="square" />
                                 </div>
                               </div>
                             </div>
-                            <div className="font-bold text-sm truncate">{albumName}</div>
-                            <div className="text-[10px] text-[#86868b] font-medium uppercase tracking-wider">Album • {albumSong?.year || '2024'}</div>
+                            <div className="font-bold text-sm truncate">{album.title}</div>
+                            <div className="text-[10px] text-[#86868b] font-medium uppercase tracking-wider">Album • {album.year || '2024'}</div>
+                          </div>
+                        );
+                      })}
+                      {/* Singles */}
+                      {tracks.filter(s => s.artistId === selectedArtist.id && !s.albumId).map(single => {
+                        return (
+                          <div
+                            key={single.id}
+                            className="group cursor-pointer"
+                            onClick={() => {
+                              audio.setCurrentSong(single);
+                              audio.setIsPlaying(true);
+                            }}
+                          >
+                            <div className="relative aspect-square rounded-2xl overflow-hidden mb-3 shadow-lg group-hover:shadow-2xl transition-all duration-300">
+                              <img src={single.coverUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <div className="w-12 h-12 rounded-none bg-white/10 flex items-center justify-center text-white">
+                                  <Play fill="white" size={24} strokeWidth={0} strokeLinejoin="miter" strokeLinecap="square" />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="font-bold text-sm truncate">{single.title}</div>
+                            <div className="text-[10px] text-[#86868b] font-medium uppercase tracking-wider">Single • {single.year || '2024'}</div>
                           </div>
                         );
                       })}

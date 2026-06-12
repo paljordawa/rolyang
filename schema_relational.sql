@@ -27,11 +27,13 @@ CREATE TABLE tracks (
   id text PRIMARY KEY,
   title text NOT NULL,
   artist_id text NOT NULL REFERENCES artists(id) ON DELETE CASCADE,
-  album_id text NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+  album_id text REFERENCES albums(id) ON DELETE CASCADE,
   duration integer NOT NULL,
   genre text NOT NULL,
   audio_url text NOT NULL,
   color text NOT NULL,
+  cover_url text,
+  year text,
   lyrics jsonb
 );
 

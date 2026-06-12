@@ -165,18 +165,33 @@ async function run() {
       console.error(`  ❌ Failed: ${file}\n     ${err.message}`);
     }
   }
-
-  console.log('');
+  const artistSlug = ARTIST.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-').replace(/^-+|-+$/g, '');
+  
+  // Verify or create artist to satisfy foreign key constraint
+  const { data: artistExists } = await supabase.from('artists').select('id').eq('id', artistSlug).single();
+  if (!artistExists) {
+    console.log(`🎤 Artist "${ARTIST}" does not exist in DB. Creating artist profile first...`);
+    const { error: artistErr } = await supabase.from('artists').insert({
+      id: artistSlug,
+      name: ARTIST,
+      bio: 'Biography coming soon...',
+      image_url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1000',
+      followers: '0'
+    });
+    if (artistErr) { console.error(`  ❌ Artist creation failed: ${artistErr.message}`); process.exit(1); }
+    console.log(`  ✅ Artist profile created for "${ARTIST}"\n`);
+  }
 
   // ── Step 3: Upload cover ───────────────────────────────────────────────────
   console.log('Step 3: Uploading cover to Supabase Storage...');
-  const coverUrl = await uploadToStorage('thumbnails', coverWebpName, coverWebpPath, 'image/webp');
+  const folderPath = `artists/${artistSlug}/${ALBUM_ID}`;
+  const coverUrl = await uploadToStorage('media', `${folderPath}/${coverWebpName}`, coverWebpPath, 'image/webp');
   console.log(`  ✅ Cover URL: ${coverUrl}\n`);
 
   // ── Step 4: Upload audio tracks ───────────────────────────────────────────
   console.log('Step 4: Uploading audio tracks to Supabase Storage...');
   for (const track of convertedTracks) {
-    track.audioUrl = await uploadToStorage('audio', track.m4aName, track.outPath, 'audio/mp4');
+    track.audioUrl = await uploadToStorage('media', `${folderPath}/${track.m4aName}`, track.outPath, 'audio/mp4');
     console.log(`  ✅ [${track.index + 1}] ${track.m4aName}`);
   }
   console.log('');
@@ -193,10 +208,11 @@ async function run() {
   // ── Step 6: Insert album into DB ──────────────────────────────────────────
   console.log('Step 5: Inserting album into database...');
   const { error: albumErr } = await supabase.from('albums').insert({
-    id:     ALBUM_ID,
-    title:  TITLE,
-    artist: ARTIST,
-    cover:  coverUrl,
+    id:         ALBUM_ID,
+    title:      TITLE,
+    artist_id:  artistSlug,
+    cover_url:  coverUrl,
+    year:       null
   });
   if (albumErr) { console.error(`  ❌ Album insert failed: ${albumErr.message}`); process.exit(1); }
   console.log(`  ✅ Album "${TITLE}" inserted\n`);
@@ -208,11 +224,15 @@ async function run() {
     const title   = toTitle(track.filename);
 
     const { error: trackErr } = await supabase.from('tracks').insert({
-      id:        trackId,
-      album_id:  ALBUM_ID,
-      title:     title,
-      audio:     track.audioUrl,
-      play_count: 0,
+      id:         trackId,
+      album_id:   ALBUM_ID,
+      artist_id:  artistSlug,
+      title:      title,
+      audio_url:  track.audioUrl,
+      duration:   0,
+      genre:      'Unknown',
+      color:      '#3b82f6',
+      lyrics:     null
     });
 
     if (trackErr) console.error(`  ❌ Track "${title}": ${trackErr.message}`);

@@ -102,7 +102,7 @@ async function run() {
     for (const file of artistFiles) {
       if (file.isFile() && /\.(jpe?g|png|webp)$/i.test(file.name)) {
         const mimeType = file.name.endsWith('.png') ? 'image/png' : 'image/jpeg';
-        const storagePath = `${artistSlug}/${toSlug(file.name.split('.')[0])}${path.extname(file.name)}`;
+        const storagePath = `artists/${artistSlug}/${toSlug(file.name.split('.')[0])}${path.extname(file.name)}`;
         artistImageUrl = await uploadFile(path.join(artistPath, file.name), storagePath, mimeType);
         console.log(`  🖼️ Uploaded artist profile: ${file.name}`);
         break; // Only take the first image found in the root artist folder
@@ -140,7 +140,7 @@ async function run() {
         if (!file.isFile()) continue;
 
         const filePath = path.join(albumPath, file.name);
-        const storageFolder = `${artistSlug}/${toSlug(albumFolder)}`;
+        const storageFolder = `artists/${artistSlug}/${toSlug(albumFolder)}`;
         const storagePath = `${storageFolder}/${file.name}`;
 
         if (/\.(jpe?g|png|webp)$/i.test(file.name)) {

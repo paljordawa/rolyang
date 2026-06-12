@@ -18,3 +18,5 @@ package-lock.json
 *.db
 *.db-journal
 local.db
+
+.vercel
