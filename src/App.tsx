@@ -3489,9 +3489,12 @@ function OnboardingScreen({
       onContinueAsGuest();
       return;
     }
+    const redirectUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? window.location.origin
+      : 'https://www.rolyang.app';
     await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: redirectUrl },
     });
   };
 
