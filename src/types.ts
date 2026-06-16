@@ -54,6 +54,9 @@ export interface Banner {
   link_url?: string;
   is_active: boolean;
   sort_order: number;
+  start_date?: string | null;
+  end_date?: string | null;
+  click_count?: number;
 }
 
 export interface Genre {
