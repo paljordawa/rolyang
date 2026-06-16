@@ -197,28 +197,51 @@ function MobileMarquee({ children, className }: { children: React.ReactNode, cla
 type HeroItem = { title: string; subtitle: string; image: string; color: string; buttonText?: string; action: () => void; };
 function HeroBannerCarousel({ items }: { items: HeroItem[] }) {
   const [current, setCurrent] = React.useState(0);
-  const [dragging, setDragging] = React.useState(false);
+  const [sliding, setSliding] = React.useState(false);
   const dragStartX = React.useRef(0);
   const dragDelta = React.useRef(0);
+  const isDragging = React.useRef(false);
   const autoRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const resetAuto = () => {
+  const resetAuto = React.useCallback(() => {
     if (autoRef.current) clearTimeout(autoRef.current);
     if (items.length > 1) {
       autoRef.current = setTimeout(() => setCurrent(c => (c + 1) % items.length), 4000);
     }
+  }, [items.length]);
+
+  React.useEffect(() => {
+    resetAuto();
+    return () => { if (autoRef.current) clearTimeout(autoRef.current); };
+  }, [current, resetAuto]);
+
+  const goTo = (idx: number) => {
+    if (sliding) return;
+    const next = ((idx % items.length) + items.length) % items.length;
+    setSliding(true);
+    setCurrent(next);
+    setTimeout(() => setSliding(false), 450);
+    resetAuto();
   };
 
-  React.useEffect(() => { resetAuto(); return () => { if (autoRef.current) clearTimeout(autoRef.current); }; }, [current, items.length]);
-
-  const goTo = (idx: number) => { setCurrent((idx + items.length) % items.length); resetAuto(); };
-
-  const handleDragStart = (clientX: number) => { dragStartX.current = clientX; dragDelta.current = 0; setDragging(true); };
-  const handleDragMove = (clientX: number) => { if (!dragging) return; dragDelta.current = clientX - dragStartX.current; };
-  const handleDragEnd = () => { if (!dragging) return; setDragging(false); if (dragDelta.current < -50) goTo(current + 1); else if (dragDelta.current > 50) goTo(current - 1); dragDelta.current = 0; };
+  const handleDragStart = (clientX: number) => {
+    dragStartX.current = clientX;
+    dragDelta.current = 0;
+    isDragging.current = true;
+  };
+  const handleDragMove = (clientX: number) => {
+    if (!isDragging.current) return;
+    dragDelta.current = clientX - dragStartX.current;
+  };
+  const handleDragEnd = () => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    if (dragDelta.current < -50) goTo(current + 1);
+    else if (dragDelta.current > 50) goTo(current - 1);
+    dragDelta.current = 0;
+  };
 
   if (items.length === 0) return null;
-  const item = items[current];
 
   return (
     <section className="select-none">
@@ -229,38 +252,57 @@ function HeroBannerCarousel({ items }: { items: HeroItem[] }) {
         onMouseUp={handleDragEnd}
         onMouseLeave={handleDragEnd}
         onTouchStart={e => handleDragStart(e.touches[0].clientX)}
-        onTouchMove={e => handleDragMove(e.touches[0].clientX)}
+        onTouchMove={e => { e.preventDefault(); handleDragMove(e.touches[0].clientX); }}
         onTouchEnd={handleDragEnd}
-        onClick={() => { if (Math.abs(dragDelta.current) < 5) item.action(); }}
+        onClick={() => { if (Math.abs(dragDelta.current) < 5) items[current].action(); }}
+        style={{ touchAction: 'pan-y' }}
       >
-        {items.map((it, i) => (
-          <div
-            key={i}
-            className="absolute inset-0 transition-opacity duration-500"
-            style={{ opacity: i === current ? 1 : 0, pointerEvents: i === current ? 'auto' : 'none' }}
-          >
-            <img src={it.image} className="absolute inset-0 w-full h-full object-cover" draggable={false} />
-            <div className={`absolute inset-0 bg-gradient-to-t ${it.color} opacity-80`} />
-            <div className="absolute inset-0 p-6 flex flex-col justify-end" style={{ pointerEvents: 'none' }}>
-              <div className="text-xs font-black tracking-widest uppercase text-white/70 mb-1">{it.title}</div>
-              <div className="text-2xl sm:text-lg text-lg font-bold text-white mb-4 line-clamp-2">{it.subtitle}</div>
-              <div style={{ pointerEvents: 'auto' }}>
-                <button
-                  className="w-fit px-6 py-2 rounded-full bg-white text-black font-bold text-xs md:text-xs flex items-center gap-2 hover:bg-[#7c3aed] hover:text-white transition-colors"
-                  onClick={e => { e.stopPropagation(); it.action(); }}
-                >
-                  {it.buttonText || 'Play Now'}
-                </button>
+        <div
+          className="flex h-full"
+          style={{
+            width: `${items.length * 100}%`,
+            transform: `translateX(-${(current * 100) / items.length}%)`,
+            transition: 'transform 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+            willChange: 'transform',
+          }}
+        >
+          {items.map((it, i) => (
+            <div
+              key={i}
+              className="relative h-full flex-shrink-0"
+              style={{ width: `${100 / items.length}%` }}
+            >
+              <img src={it.image} className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+              <div className={`absolute inset-0 bg-gradient-to-t ${it.color} opacity-80`} />
+              <div className="absolute inset-0 p-6 flex flex-col justify-end" style={{ pointerEvents: 'none' }}>
+                <div className="text-xs font-black tracking-widest uppercase text-white/70 mb-1">{it.title}</div>
+                <div className="text-2xl font-bold text-white mb-4 line-clamp-2">{it.subtitle}</div>
+                <div style={{ pointerEvents: 'auto' }}>
+                  <button
+                    className="w-fit px-6 py-2 rounded-full bg-white text-black font-bold text-xs flex items-center gap-2 hover:bg-[#7c3aed] hover:text-white transition-colors"
+                    onClick={e => { e.stopPropagation(); it.action(); }}
+                  >
+                    {it.buttonText || 'Play Now'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
         {items.length > 1 && (
           <>
-            <button onClick={e => { e.stopPropagation(); goTo(current - 1); }} className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-all backdrop-blur-sm" aria-label="Previous">
+            <button
+              onClick={e => { e.stopPropagation(); goTo(current - 1); }}
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-all backdrop-blur-sm"
+              aria-label="Previous"
+            >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="15 18 9 12 15 6" /></svg>
             </button>
-            <button onClick={e => { e.stopPropagation(); goTo(current + 1); }} className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-all backdrop-blur-sm" aria-label="Next">
+            <button
+              onClick={e => { e.stopPropagation(); goTo(current + 1); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-all backdrop-blur-sm"
+              aria-label="Next"
+            >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6" /></svg>
             </button>
           </>
@@ -281,6 +323,7 @@ function HeroBannerCarousel({ items }: { items: HeroItem[] }) {
     </section>
   );
 }
+
 
 export default function App() {
 
