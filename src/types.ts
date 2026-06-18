@@ -18,6 +18,7 @@ export interface Album {
 export interface LyricLine {
   time: number; // in seconds
   text: string;
+  translation?: string;
 }
 
 export interface Song {
