@@ -744,7 +744,7 @@ export default function App() {
     setIsEditModalOpen(true);
   };
 
-  const confirmUpdatePlaylist = () => {
+  const confirmUpdatePlaylist = async () => {
     if (!selectedPlaylist) return;
 
     const updated = {
@@ -756,33 +756,66 @@ export default function App() {
     setUserPlaylists(prev => prev.map(p => p.id === updated.id ? updated : p));
     setSelectedPlaylist(updated);
     setIsEditModalOpen(false);
+
+    if (user) {
+      await supabase
+        .from('user_playlists')
+        .update({
+          name: updated.name,
+          description: updated.description
+        })
+        .eq('id', updated.id);
+    }
   };
 
-  const toggleSongInPlaylist = (playlistId: string) => {
+  const toggleSongInPlaylist = async (playlistId: string) => {
     if (!selectedSongForPlaylist) return;
+
+    let updatedSongs: string[] = [];
 
     setUserPlaylists(prev => prev.map(p => {
       if (p.id === playlistId) {
         const hasSong = p.songs.includes(selectedSongForPlaylist);
+        updatedSongs = hasSong
+          ? p.songs.filter(id => id !== selectedSongForPlaylist)
+          : [...p.songs, selectedSongForPlaylist];
         return {
           ...p,
-          songs: hasSong
-            ? p.songs.filter(id => id !== selectedSongForPlaylist)
-            : [...p.songs, selectedSongForPlaylist]
+          songs: updatedSongs
         };
       }
       return p;
     }));
+
+    if (selectedPlaylist && selectedPlaylist.id === playlistId) {
+      setSelectedPlaylist(prev => prev ? { ...prev, songs: updatedSongs } : null);
+    }
+
+    if (user) {
+      await supabase
+        .from('user_playlists')
+        .update({ songs: updatedSongs })
+        .eq('id', playlistId);
+    }
+
     setIsAddToPlaylistModalOpen(false);
     setSelectedSongForPlaylist(null);
   };
 
-  const handleDeletePlaylist = () => {
+  const handleDeletePlaylist = async () => {
     if (!selectedPlaylist) return;
     if (confirm('Are you sure you want to delete this playlist?')) {
-      setUserPlaylists(prev => prev.filter(p => p.id !== selectedPlaylist.id));
+      const pid = selectedPlaylist.id;
+      setUserPlaylists(prev => prev.filter(p => p.id !== pid));
       setSelectedPlaylist(null);
       setIsEditModalOpen(false);
+
+      if (user) {
+        await supabase
+          .from('user_playlists')
+          .delete()
+          .eq('id', pid);
+      }
     }
   };
 
