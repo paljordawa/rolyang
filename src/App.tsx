@@ -464,9 +464,7 @@ export default function App() {
 
   const [lang, setLang] = useState<Language>('en');
   const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('rolyang_onboarding_complete') === 'true';
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
@@ -499,6 +497,8 @@ export default function App() {
         setIsLoggedIn(true);
         localStorage.setItem('rolyang_onboarding_complete', 'true');
         loadUserData(session.user.id);
+      } else {
+        setIsLoggedIn(false);
       }
     });
 
@@ -510,6 +510,8 @@ export default function App() {
         loadUserData(session.user.id);
         // Refetch all public data now that the session is established
         fetchAllData();
+      } else {
+        setIsLoggedIn(false);
       }
     });
     return () => subscription.unsubscribe();
@@ -803,10 +805,6 @@ export default function App() {
       <AnimatePresence>
         {!isLoggedIn && (
           <OnboardingScreen
-            onContinueAsGuest={() => {
-              setIsLoggedIn(true);
-              localStorage.setItem('rolyang_onboarding_complete', 'true');
-            }}
             openPrivacyPolicy={() => setIsPrivacyPolicyOpen(true)}
             openAboutUs={() => setIsAboutUsOpen(true)}
           />
@@ -3745,7 +3743,6 @@ export default function App() {
               >
                 <X size={20} strokeWidth={2} strokeLinejoin="miter" strokeLinecap="square" />
               </button>
-
               <div className="flex flex-col items-center gap-4 w-full">
                 <div className="relative group">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#7c3aed] to-[#ff4d61] flex items-center justify-center shadow-lg shadow-[#7c3aed]/10 ring-2 ring-white/5 overflow-hidden">
@@ -3759,7 +3756,7 @@ export default function App() {
 
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-white mb-0.5 tracking-tight">
-                    {user?.user_metadata?.full_name || user?.email || 'Guest Account'}
+                    {user?.user_metadata?.full_name || user?.email || 'User Account'}
                   </h3>
                   <p className="text-[9px] text-[#86868b] font-bold uppercase tracking-[0.2em]">Music Member</p>
                 </div>
@@ -4011,17 +4008,15 @@ function MobileNavItem({ icon, label, active = false, onClick }: { icon: React.R
 // ─── Rolyang Login / Onboarding Screen ────────────────────────────────────────
 
 function OnboardingScreen({
-  onContinueAsGuest,
   openPrivacyPolicy,
   openAboutUs
 }: {
-  onContinueAsGuest: () => void,
   openPrivacyPolicy: () => void,
   openAboutUs: () => void
 }) {
   const handleOAuth = async (provider: 'google' | 'facebook') => {
     if (!isSupabaseConfigured) {
-      onContinueAsGuest();
+      alert("Supabase configuration is missing. Authentication is unavailable.");
       return;
     }
     const redirectUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -4076,7 +4071,7 @@ function OnboardingScreen({
         transition={{ delay: 1.2, duration: 0.8 }}
         className="w-full max-w-sm relative z-10 flex flex-col items-center gap-6"
       >
-        <p className="text-white/60 text-center text-sm font-medium">Discover and listen to your favorite music instantly.</p>
+        <p className="text-white/60 text-center text-sm font-medium">From the Grasslands to the World: Preserving Heritage, One Song at a Time</p>
         <div className="w-full space-y-4">
           <button onClick={() => handleOAuth('google')} className="w-full flex items-center justify-center gap-3 bg-white text-black font-bold py-3.5 px-6 rounded-full hover:scale-105 active:scale-95 shadow-[0_4px_12px_rgba(255,255,255,0.1)] transition-transform duration-300">
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -4094,9 +4089,6 @@ function OnboardingScreen({
             Continue with Facebook
           </button>
         </div>
-        <button onClick={onContinueAsGuest} className="text-white/50 hover:text-white transition-colors text-sm font-semibold underline underline-offset-4 decoration-white/20 hover:decoration-white pt-2">
-          Continue as Guest
-        </button>
         <p className="text-[11px] text-white/25 text-center font-medium">
           By continuing, you agree to Rolyang's <button onClick={openPrivacyPolicy} className="text-white/50 hover:underline">Privacy Policy</button>.<br />
           <button onClick={openAboutUs} className="text-white/50 hover:underline mt-2">Learn more About Us</button>
