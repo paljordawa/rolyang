@@ -78,7 +78,7 @@ const SongContextMenu = ({
   openArtist: (id: string) => void,
   setSelectedAlbum: (album: any) => void,
   selectedPlaylist?: any,
-  toggleSongInPlaylist?: (pid: string) => void
+  toggleSongInPlaylist?: (pid: string, songId?: string) => void
 }) => {
   if (activeContextMenu !== song.id) return null;
 
@@ -125,7 +125,7 @@ const SongContextMenu = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              toggleSongInPlaylist(selectedPlaylist.id);
+              toggleSongInPlaylist(selectedPlaylist.id, song.id);
               setActiveContextMenu(null);
             }}
             className="w-full px-4 py-2 text-left text-sm hover:bg-white/10 flex items-center gap-3 transition-colors text-[#7c3aed]"
@@ -768,24 +768,19 @@ export default function App() {
     }
   };
 
-  const toggleSongInPlaylist = async (playlistId: string) => {
-    if (!selectedSongForPlaylist) return;
+  const toggleSongInPlaylist = async (playlistId: string, songId?: string) => {
+    const targetSongId = songId || selectedSongForPlaylist;
+    if (!targetSongId) return;
 
-    let updatedSongs: string[] = [];
+    const playlist = userPlaylists.find(p => p.id === playlistId);
+    if (!playlist) return;
 
-    setUserPlaylists(prev => prev.map(p => {
-      if (p.id === playlistId) {
-        const hasSong = p.songs.includes(selectedSongForPlaylist);
-        updatedSongs = hasSong
-          ? p.songs.filter(id => id !== selectedSongForPlaylist)
-          : [...p.songs, selectedSongForPlaylist];
-        return {
-          ...p,
-          songs: updatedSongs
-        };
-      }
-      return p;
-    }));
+    const hasSong = playlist.songs.includes(targetSongId);
+    const updatedSongs = hasSong
+      ? playlist.songs.filter(id => id !== targetSongId)
+      : [...playlist.songs, targetSongId];
+
+    setUserPlaylists(prev => prev.map(p => p.id === playlistId ? { ...p, songs: updatedSongs } : p));
 
     if (selectedPlaylist && selectedPlaylist.id === playlistId) {
       setSelectedPlaylist(prev => prev ? { ...prev, songs: updatedSongs } : null);
